@@ -18,6 +18,9 @@ df = pd.read_csv(input_path)
 # Transformation of the TotalCharges column in float
 df["TotalCharges"] = df["TotalCharges"].str.strip().replace(",", ".", regex=True).replace("", np.nan).astype(float)
 
+# Impute missing values in TotalCharges with the median
+df["TotalCharges"].fillna(df["TotalCharges"].median(), inplace=True)
+
 # Transformation of all object columns in lowercase
 columns_to_lower = ['gender', 'Partner', 'Dependents',
         'PhoneService', 'MultipleLines', 'InternetService',
