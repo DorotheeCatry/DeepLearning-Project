@@ -10,8 +10,8 @@ def preprocess(X_train, X_val, X_test, y_train, y_val, y_test):
     # LabelEncoding of the target 
     le = LabelEncoder()
     y_train_encoded = le.fit_transform(y_train)
-    y_test_encoding = le.fit_transform(y_test)
-    y_val_encoding = le.fit_transform(y_val)
+    y_test_encoding = le.transform(y_test)
+    y_val_encoding = le.transform(y_val)
 
     # Categorical columns
     cat_cols = X_train.select_dtypes(include=['object', 'bool']).columns.tolist()
@@ -33,7 +33,7 @@ def preprocess(X_train, X_val, X_test, y_train, y_val, y_test):
     ])
 
     X_train_processed = pipeline.fit_transform(X_train)
-    X_test_processed = pipeline.fit_transform(X_test)
-    X_val_processed = pipeline.fit_transform(X_val)
+    X_test_processed = pipeline.transform(X_test)
+    X_val_processed = pipeline.transform(X_val)
 
     return X_train_processed, X_test_processed, X_val_processed, y_test_encoding, y_train_encoded, y_val_encoding, pipeline, le
