@@ -1,4 +1,4 @@
-#Import
+# Import
 import pandas as pd
 import numpy as np
 import os
@@ -16,7 +16,7 @@ df = pd.read_csv(input_path)
 # Cleaning Tasks
 
 # Transformation of the TotalCharges column in float
-df["TotalCharges"] = df["TotalCharges"].str.strip().replace(",", ".", regex=True).replace("", np.nan).astype(float)
+df["TotalCharges"] = df["TotalCharges"].astype(str).replace(",", ".", regex=True).replace("", np.nan).astype(float)
 
 # Transformation of all object columns in lowercase
 columns_to_lower = ['gender', 'Partner', 'Dependents',
