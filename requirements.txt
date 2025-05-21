@@ -6,3 +6,4 @@ seaborn
 optuna
 optuna-dashboard
 tensorflow
+tensorflow-cpu

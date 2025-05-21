@@ -16,7 +16,7 @@ df = pd.read_csv(input_path)
 # Cleaning Tasks
 
 # Transformation of the TotalCharges column in float
-df["TotalCharges"] = df["TotalCharges"].str.strip().replace(",", ".", regex=True).replace("", np.nan).astype(float)
+df["TotalCharges"] = df["TotalCharges"].astype(str).replace(",", ".", regex=True).replace("", np.nan).astype(float)
 
 # Impute missing values in TotalCharges with the median
 df["TotalCharges"].fillna(df["TotalCharges"].median(), inplace=True)
