@@ -31,6 +31,10 @@ for c in columns_to_lower:
 
     df[c]=df[c].apply(lambda x: x.lower())
 
+
+# Drop the customerID column
+df.drop(columns=['customerID'], inplace=True)
+
 # Save df into a cleaned csv
 output_path = os.path.join(data_dir, 'cleaned_datas.csv')
 df.to_csv(output_path, index=False)
