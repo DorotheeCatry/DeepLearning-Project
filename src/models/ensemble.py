@@ -1,32 +1,44 @@
-from sklearn.ensemble import GradientBoostingClassifier, VotingClassifier
+import numpy as np
+from sklearn.ensemble import GradientBoostingClassifier
 from scikeras.wrappers import KerasClassifier
 from sklearn.metrics import classification_report, roc_auc_score, confusion_matrix, average_precision_score
-import numpy as np
 import joblib
+import os
 
 from src.models.neural_network import build_model
 
-def train_ensemble(X_train_array, X_val_array, y_train, y_val, preprocessing_layers, gb_params, nn_epochs=100, batch_size=32):
-    """
-    Train an ensemble model combining NN and GB.
+# En dehors de train_ensemble (dans ensemble.py par ex)
+def create_model(input_dim):
+    return build_model(input_dim)
+
+class ManualEnsemble:
+    def __init__(self, nn_model, gb_model, weights):
+        self.nn_model = nn_model
+        self.gb_model = gb_model
+        self.weights = weights
     
-    Args:
-        X_train_array: Training features array
-        X_val_array: Validation features array
-        y_train: Training labels
-        y_val: Validation labels
-        preprocessing_layers: Preprocessing layers dictionary
-        gb_params: Gradient boosting parameters
-        nn_epochs: Number of epochs for neural network
-        batch_size: Batch size for neural network
-    """
-    # Neural Network
-    input_dim = X_train_array.shape[1]
+    def predict_proba(self, X):
+        nn_prob = self.nn_model.predict_proba(X)
+        gb_prob = self.gb_model.predict_proba(X)
+        return self.weights[0] * nn_prob + self.weights[1] * gb_prob
+    
+    def predict(self, X, threshold=0.5):
+        probas = self.predict_proba(X)
+        return (probas[:, 1] >= threshold).astype(int)
+
+
+def train_ensemble(X_train, X_val, y_train, y_val, gb_params, nn_epochs=100, batch_size=32, voting_weights=(0.5, 0.5)):
+    input_dim = X_train.shape[1]
+
+    # Définition d'une fonction nommée pour KerasClassifier
+    def model_fn():
+        return create_model(input_dim)
+
     nn_clf = KerasClassifier(
-        model=lambda: build_model(input_dim),
+        model=model_fn,
         epochs=nn_epochs,
         batch_size=batch_size,
-        verbose=0
+        verbose=1
     )
 
     # Gradient Boosting
@@ -38,21 +50,18 @@ def train_ensemble(X_train_array, X_val_array, y_train, y_val, preprocessing_lay
     filtered_params = {k: v for k, v in gb_params.items() if k in allowed_params}
     gb_clf = GradientBoostingClassifier(**filtered_params)
 
-    # Ensemble
-    voting_clf = VotingClassifier(
-        estimators=[
-            ('nn', nn_clf),
-            ('gb', gb_clf)
-        ],
-        voting='soft'
-    )
+    # Entraînement des modèles
+    print("Training Neural Network...")
+    nn_clf.fit(X_train, y_train, validation_data=(X_val, y_val))
 
-    print("Training ensemble model...")
-    voting_clf.fit(X_train_array, y_train)
+    print("\nTraining Gradient Boosting...")
+    gb_clf.fit(X_train, y_train)
 
-    # Evaluation
-    y_pred = voting_clf.predict(X_val_array)
-    y_prob = voting_clf.predict_proba(X_val_array)[:, 1]
+    ensemble = ManualEnsemble(nn_clf, gb_clf, voting_weights)
+
+    # Évaluation
+    y_pred = ensemble.predict(X_val)
+    y_prob = ensemble.predict_proba(X_val)[:, 1]
 
     print("\nEnsemble Model Performance:")
     print(classification_report(y_val, y_pred))
@@ -61,7 +70,13 @@ def train_ensemble(X_train_array, X_val_array, y_train, y_val, preprocessing_lay
     print("Confusion Matrix:")
     print(confusion_matrix(y_val, y_pred))
 
-    # Save model
-    joblib.dump(voting_clf, "data/models/ensemble_model.pkl")
-    
-    return voting_clf
+    os.makedirs('data/models', exist_ok=True)
+
+    # Sauvegarde des modèles et poids, sans sauvegarder l'objet ensemble (car classe locale évitée)
+    joblib.dump({
+        'nn_model': nn_clf,
+        'gb_model': gb_clf,
+        'weights': voting_weights
+    }, "data/models/ensemble_model.pkl")
+
+    return ensemble

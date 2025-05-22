@@ -63,12 +63,12 @@ def main():
     
     print("\nTraining ensemble model...")
     ensemble_model = train_ensemble(
-        X_train_array,
-        X_val_array,
+        X_train_processed,
+        X_val_processed,
         y_train_enc,
         y_val_enc,
-        preprocessing_layers,
-        gb_model.get_params()
+        gb_model.get_params(),
+        voting_weights=(0.4, 0.6)  # Give slightly more weight to GB
     )
     
     # Get and plot feature importance
