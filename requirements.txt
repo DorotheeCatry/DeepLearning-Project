@@ -1,9 +1,7 @@
 numpy
 pandas
 scikit-learn
-matplotlib
-seaborn
-optuna
-optuna-dashboard
 tensorflow
 tensorflow-cpu
+matplotlib
+seaborn
