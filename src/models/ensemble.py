@@ -4,6 +4,7 @@ from scikeras.wrappers import KerasClassifier
 from sklearn.metrics import classification_report, roc_auc_score, confusion_matrix, average_precision_score
 import joblib
 import os
+import tensorflow as tf
 
 from src.models.neural_network import build_model
 
@@ -28,7 +29,7 @@ class ManualEnsemble:
         ensemble_prob = ensemble_prob / np.sum(ensemble_prob, axis=1, keepdims=True)
         return ensemble_prob
     
-    def predict(self, X, threshold=0.4):  # Adjusted threshold for better recall
+    def predict(self, X, threshold=0.4):
         probas = self.predict_proba(X)
         return (probas[:, 1] >= threshold).astype(int)
 
@@ -38,13 +39,21 @@ def train_ensemble(X_train, X_val, y_train, y_val, gb_params, nn_epochs=150, bat
     """
     input_dim = X_train.shape[1]
     
+    # Calculate class weights
+    n_neg = np.sum(y_train == 0)
+    n_pos = np.sum(y_train == 1)
+    weight_for_0 = (1 / n_neg) * (n_neg + n_pos) / 2.0
+    weight_for_1 = (1 / n_pos) * (n_neg + n_pos) / 2.0
+    
+    class_weight = {0: weight_for_0, 1: weight_for_1}
+    
     # Neural Network with early stopping and class weights
+    model_builder = lambda: create_model(input_dim)
     nn_clf = KerasClassifier(
-        model=lambda: create_model(input_dim),
+        model=model_builder,
         epochs=nn_epochs,
         batch_size=batch_size,
-        verbose=1,
-        class_weight={0: 1, 1: 2}  # Give more weight to minority class
+        verbose=1
     )
     
     # Gradient Boosting with filtered parameters
@@ -57,16 +66,17 @@ def train_ensemble(X_train, X_val, y_train, y_val, gb_params, nn_epochs=150, bat
     gb_clf = GradientBoostingClassifier(**filtered_params)
     
     print("Training Neural Network...")
+    early_stopping = tf.keras.callbacks.EarlyStopping(
+        monitor='val_loss',
+        patience=10,
+        restore_best_weights=True
+    )
+    
     nn_clf.fit(
         X_train, y_train,
         validation_data=(X_val, y_val),
-        callbacks=[
-            tf.keras.callbacks.EarlyStopping(
-                monitor='val_loss',
-                patience=10,
-                restore_best_weights=True
-            )
-        ]
+        class_weight=class_weight,
+        callbacks=[early_stopping]
     )
     
     print("\nTraining Gradient Boosting...")
