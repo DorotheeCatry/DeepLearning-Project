@@ -1,79 +1,52 @@
-import numpy as np
-from sklearn.ensemble import VotingClassifier
+from sklearn.ensemble import GradientBoostingClassifier, VotingClassifier
 from scikeras.wrappers import KerasClassifier
-from sklearn.metrics import classification_report, roc_auc_score, precision_recall_curve, auc
-import tensorflow as tf
+from sklearn.metrics import classification_report, roc_auc_score, confusion_matrix, average_precision_score
+import numpy as np
+import joblib
 
-def create_keras_classifier(input_dim, learning_rate=0.001):
-    """
-    Create a KerasClassifier wrapper around our neural network.
-    """
-    model = tf.keras.Sequential([
-        tf.keras.layers.Dense(128, activation='relu', input_dim=input_dim,
-                            kernel_regularizer=tf.keras.regularizers.l2(0.001)),
-        tf.keras.layers.BatchNormalization(),
-        tf.keras.layers.Dropout(0.3),
-        
-        tf.keras.layers.Dense(64, activation='relu',
-                            kernel_regularizer=tf.keras.regularizers.l2(0.001)),
-        tf.keras.layers.BatchNormalization(),
-        tf.keras.layers.Dropout(0.2),
-        
-        tf.keras.layers.Dense(32, activation='relu',
-                            kernel_regularizer=tf.keras.regularizers.l2(0.001)),
-        tf.keras.layers.BatchNormalization(),
-        
-        tf.keras.layers.Dense(1, activation='sigmoid')
-    ])
-    
-    model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
-        loss='binary_crossentropy',
-        metrics=['accuracy', tf.keras.metrics.AUC(name='auc')]
+from src.models.neural_network import build_model  # Assure-toi que cette fonction existe et retourne un modèle Keras compilé
+
+
+def train_ensemble(X_train, X_val, y_train, y_val, best_gb_params, nn_epochs=100, batch_size=32):
+    # 1. Build KerasClassifier (with SciKeras)
+    nn_clf = KerasClassifier(
+        model=build_model,
+        epochs=nn_epochs,
+        batch_size=batch_size,
+        verbose=0
     )
-    
-    return model
 
-def train_ensemble(nn_model, gb_model, X_train, y_train, X_val, y_val):
-    """
-    Train the ensemble model.
-    """
-    # Create the voting classifier
+    # 2. Build Gradient Boosting Classifier with best hyperparameters
+    gb_clf = GradientBoostingClassifier(**best_gb_params)
+
+    # 3. Voting Ensemble (soft voting)
     voting_clf = VotingClassifier(
         estimators=[
-            ('nn', KerasClassifier(
-                model=lambda: create_keras_classifier(X_train.shape[1]),
-                epochs=100,
-                batch_size=32,
-                verbose=1,
-                callbacks=[
-                    tf.keras.callbacks.EarlyStopping(
-                        monitor='val_auc',
-                        patience=10,
-                        restore_best_weights=True,
-                        mode='max'
-                    )
-                ]
-            )),
-            ('gb', gb_model)
+            ('nn', nn_clf),
+            ('gb', gb_clf)
         ],
         voting='soft'
     )
-    
-    # Train the ensemble
-    print("\nTraining ensemble model...")
-    voting_clf.fit(
-        X_train, 
-        y_train,
-        nn__validation_data=(X_val, y_val)
-    )
-    
-    # Evaluate ensemble
+
+    print("Training ensemble model...")
+    voting_clf.fit(X_train, y_train)
+
+    # 4. Evaluation
     y_pred = voting_clf.predict(X_val)
-    y_proba = voting_clf.predict_proba(X_val)[:, 1]
-    
-    print("\nEnsemble Model Validation Metrics:")
+    y_prob = voting_clf.predict_proba(X_val)[:, 1]
+
+    print("\n📊 Ensemble Classification Report:")
     print(classification_report(y_val, y_pred))
-    print(f"ROC AUC: {roc_auc_score(y_val, y_proba):.4f}")
-    
+
+    roc_auc = roc_auc_score(y_val, y_prob)
+    pr_auc = average_precision_score(y_val, y_prob)
+
+    print(f"ROC AUC: {roc_auc:.4f}")
+    print(f"PR AUC: {pr_auc:.4f}")
+    print("Confusion Matrix:")
+    print(confusion_matrix(y_val, y_pred))
+
+    # Optionally save model
+    joblib.dump(voting_clf, "ensemble_model.pkl")
+
     return voting_clf
