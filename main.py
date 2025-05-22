@@ -99,8 +99,8 @@ def main():
     plot_learning_curves(history)
     
     # Save the models
-    nn_model.save("data/churn_model_tf")
-    print("Neural Network model saved to data/churn_model_tf")
+    nn_model.save("data/churn_model.keras")  # Changed extension to .keras
+    print("Neural Network model saved to data/churn_model.keras")
     
     # Save the preprocessor
     import joblib
