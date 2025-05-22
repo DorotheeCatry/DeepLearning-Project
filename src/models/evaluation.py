@@ -1,6 +1,6 @@
 from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
 
-def evaluate_models(nn_model, gb_model, X_test_dict, X_test_processed, y_test, le):
+def evaluate_models(nn_model, gb_model, X_test_dict, X_test_processed, y_test):
     """
     Evaluate both neural network and gradient boosting models.
     
@@ -10,7 +10,6 @@ def evaluate_models(nn_model, gb_model, X_test_dict, X_test_processed, y_test, l
         X_test_dict: Test features in dictionary format for neural network
         X_test_processed: Preprocessed test features for gradient boosting
         y_test: Test target (encoded)
-        le: Label encoder for target variable
     """
     # Neural Network predictions
     nn_pred_proba = nn_model.predict(X_test_dict)
@@ -22,10 +21,10 @@ def evaluate_models(nn_model, gb_model, X_test_dict, X_test_processed, y_test, l
     
     # Print classification reports
     print("\nNeural Network Classification Report:")
-    print(classification_report(y_test, nn_pred, target_names=le.classes_))
+    print(classification_report(y_test, nn_pred, target_names=['no', 'yes']))
     
     print("\nGradient Boosting Classification Report:")
-    print(classification_report(y_test, gb_pred, target_names=le.classes_))
+    print(classification_report(y_test, gb_pred, target_names=['no', 'yes']))
     
     # Calculate and print ROC AUC scores
     nn_auc = roc_auc_score(y_test, nn_pred_proba)

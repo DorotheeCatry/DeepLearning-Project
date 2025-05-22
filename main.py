@@ -86,7 +86,7 @@ def main():
     plot_feature_importance(importance_df)
     
     print("\nEvaluating models...")
-    evaluate_models(nn_model, gb_model, X_test_dict, X_test_processed, y_test)
+    evaluate_models(nn_model, gb_model, X_test_dict, X_test_processed, y_test_enc)
     
     # ROC plots require predicted probabilities
     nn_pred_proba = nn_model.predict(X_test_dict)
