@@ -1,8 +1,0 @@
-cleaning
-data
-features
-models
-notebooks
-pipeline
-utils
-visualization
