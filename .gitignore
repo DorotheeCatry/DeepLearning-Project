@@ -10,6 +10,6 @@ logs/
 checkpoints/
 mlruns/
 *.pkl
-*.txt
-
+tips.txt
+db.sqlite3
 
