@@ -24,7 +24,22 @@ def preprocess_data(X_train, X_val, X_test, y_train, y_val, y_test):
     if 'customerID' in cat_cols:
         cat_cols.remove('customerID')
 
-    # 3. Create preprocessor for scikit-learn
+    # 3. Create preprocessors for TensorFlow
+    preprocessing_layers = {}
+
+    # Numeric features
+    for col in num_cols:
+        normalizer = Normalization()
+        normalizer.adapt(X_train[col].values.reshape(-1, 1))
+        preprocessing_layers[col] = normalizer
+
+    # Categorical features
+    for col in cat_cols:
+        lookup = StringLookup(output_mode='int', vocabulary=np.unique(X_train[col]))
+        onehot = CategoryEncoding(output_mode='binary', num_tokens=lookup.vocabulary_size())
+        preprocessing_layers[col] = (lookup, onehot)
+
+    # 4. Create preprocessor for scikit-learn
     numeric_transformer = StandardScaler()
     categorical_transformer = OneHotEncoder(drop='first', sparse_output=False)
 
@@ -39,5 +54,20 @@ def preprocess_data(X_train, X_val, X_test, y_train, y_val, y_test):
     X_val_processed = preprocessor.transform(X_val)
     X_test_processed = preprocessor.transform(X_test)
 
-    return (X_train_processed, X_val_processed, X_test_processed,
-            y_train_enc, y_val_enc, y_test_enc)
+    # 5. Create TensorFlow input dictionaries
+    def df_to_dict(df):
+        data_dict = {}
+        for col in num_cols:
+            data_dict[col] = df[col].values.astype('float32')
+        for col in cat_cols:
+            data_dict[col] = df[col].astype(str).values
+        return data_dict
+
+    X_train_dict = df_to_dict(X_train)
+    X_val_dict = df_to_dict(X_val)
+    X_test_dict = df_to_dict(X_test)
+
+    return (X_train_dict, X_val_dict, X_test_dict, 
+            X_train_processed, X_val_processed, X_test_processed,
+            y_train_enc, y_val_enc, y_test_enc, 
+            preprocessing_layers, preprocessor)

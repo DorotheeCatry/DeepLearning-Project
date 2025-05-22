@@ -51,8 +51,10 @@ def main():
     X_train, X_val, X_test, y_train, y_val, y_test = split_data(df, target='Churn')
     
     print("Preprocessing data...")
-    (X_train_processed, X_val_processed, X_test_processed,
-     y_train_enc, y_val_enc, y_test_enc) = preprocess_data(
+    (X_train_dict, X_val_dict, X_test_dict,
+     X_train_processed, X_val_processed, X_test_processed,
+     y_train_enc, y_val_enc, y_test_enc,
+     preprocessing_layers, preprocessor) = preprocess_data(
         X_train, X_val, X_test, y_train, y_val, y_test
     )
     
@@ -61,10 +63,11 @@ def main():
     
     print("\nTraining ensemble model...")
     ensemble_model = train_ensemble(
-        X_train_processed,
-        X_val_processed,
+        X_train_dict,
+        X_val_dict,
         y_train_enc,
         y_val_enc,
+        preprocessing_layers,
         gb_model.get_params()
     )
     
