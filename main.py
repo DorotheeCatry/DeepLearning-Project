@@ -52,10 +52,11 @@ def main():
     
     print("Preprocessing data...")
     (X_train_dict, X_val_dict, X_test_dict,
-        X_train_array, X_val_array, X_test_array,
-        y_train_enc, y_val_enc, y_test_enc, X_train_processed, X_val_processed, X_test_processed,
-        preprocessing_layers, preprocessor ) = preprocess_data(
-            X_train, X_val, X_test, y_train, y_val, y_test)
+     X_train_array, X_val_array, X_test_array,
+     y_train_enc, y_val_enc, y_test_enc,
+     X_train_processed, X_val_processed, X_test_processed,
+     preprocessing_layers, preprocessor) = preprocess_data(
+        X_train, X_val, X_test, y_train, y_val, y_test)
     print("Preprocessing completed.")
     
     print("\nTraining gradient boosting model...")
@@ -63,8 +64,8 @@ def main():
     
     print("\nTraining ensemble model...")
     ensemble_model = train_ensemble(
-        X_train_dict,
-        X_val_dict,
+        X_train_array,
+        X_val_array,
         y_train_enc,
         y_val_enc,
         preprocessing_layers,
