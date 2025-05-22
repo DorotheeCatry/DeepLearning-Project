@@ -61,12 +61,11 @@ def main():
     
     print("\nTraining ensemble model...")
     ensemble_model = train_ensemble(
-        None,  # Neural network will be created inside train_ensemble
-        gb_model,
         X_train_processed,
-        y_train_enc,
         X_val_processed,
-        y_val_enc
+        y_train_enc,
+        y_val_enc,
+        gb_model.get_params()
     )
     
     importance_df = get_feature_importance(gb_model, X_train.columns)
