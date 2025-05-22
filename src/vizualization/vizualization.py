@@ -61,18 +61,26 @@ def plot_feature_importance(importance_df, top_n=15):
     plt.savefig('visualization/feature_importance_gb.png')
     plt.close()
 
-def plot_roc_curves(y_test, nn_pred_proba, gb_pred_proba):
-    from sklearn.metrics import roc_curve, auc
-    
+def plot_roc_curves(y_test, nn_pred_proba, gb_pred_proba, ensemble_pred_proba):
     plt.figure(figsize=(10, 8))
     
+    # Neural Network ROC
     fpr_nn, tpr_nn, _ = roc_curve(y_test, nn_pred_proba)
     roc_auc_nn = auc(fpr_nn, tpr_nn)
-    plt.plot(fpr_nn, tpr_nn, color='blue', lw=2, label=f'Neural Network (AUC = {roc_auc_nn:.2f})')
+    plt.plot(fpr_nn, tpr_nn, color='blue', lw=2, 
+             label=f'Neural Network (AUC = {roc_auc_nn:.2f})')
     
+    # Gradient Boosting ROC
     fpr_gb, tpr_gb, _ = roc_curve(y_test, gb_pred_proba)
     roc_auc_gb = auc(fpr_gb, tpr_gb)
-    plt.plot(fpr_gb, tpr_gb, color='red', lw=2, label=f'Gradient Boosting (AUC = {roc_auc_gb:.2f})')
+    plt.plot(fpr_gb, tpr_gb, color='red', lw=2,
+             label=f'Gradient Boosting (AUC = {roc_auc_gb:.2f})')
+    
+    # Ensemble ROC
+    fpr_ens, tpr_ens, _ = roc_curve(y_test, ensemble_pred_proba)
+    roc_auc_ens = auc(fpr_ens, tpr_ens)
+    plt.plot(fpr_ens, tpr_ens, color='green', lw=2,
+             label=f'Ensemble (AUC = {roc_auc_ens:.2f})')
     
     plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
     plt.xlim([0.0, 1.0])
