@@ -1,5 +1,3 @@
-# gradient_boosting.py
-
 import os
 import numpy as np
 import pandas as pd
@@ -45,21 +43,51 @@ def create_gb_model(
         random_state=random_state
     )
 
-def train_gb_model(X_train, y_train, X_val, y_val):
+def train_gb_model(X_train, y_train, X_val, y_val, feature_names=None):
     """
-    Train a Gradient Boosting model with default hyperparameters, evaluate and save it.
+    Train a Gradient Boosting model with optimized hyperparameters.
     
     Args:
-        X_train (pd.DataFrame or np.ndarray): Training features.
-        y_train (pd.Series or np.ndarray): Training target.
-        X_val (pd.DataFrame or np.ndarray): Validation features.
-        y_val (pd.Series or np.ndarray): Validation target.
+        X_train (np.ndarray): Training features (preprocessed).
+        y_train (np.ndarray): Training target (encoded).
+        X_val (np.ndarray): Validation features (preprocessed).
+        y_val (np.ndarray): Validation target (encoded).
+        feature_names (list, optional): List of feature names.
         
     Returns:
         Trained Gradient Boosting model.
     """
-    model = create_gb_model()
-    model.fit(X_train, y_train)
+    # Define parameter space for optimization
+    param_dist = {
+        'n_estimators': [100, 200, 300, 400, 500],
+        'learning_rate': np.linspace(0.01, 0.3, 20),
+        'max_depth': [3, 4, 5, 6],
+        'min_samples_split': [2, 5, 10],
+        'min_samples_leaf': [1, 2, 4],
+        'subsample': [0.7, 0.8, 0.9, 1.0],
+        'max_features': ['sqrt', 'log2', None]
+    }
+    
+    # Create base model
+    base_model = GradientBoostingClassifier(random_state=42)
+    
+    # Initialize RandomizedSearchCV
+    search = RandomizedSearchCV(
+        estimator=base_model,
+        param_distributions=param_dist,
+        n_iter=20,  # Number of parameter settings sampled
+        scoring='roc_auc',
+        cv=3,
+        verbose=1,
+        random_state=42,
+        n_jobs=-1
+    )
+    
+    # Fit RandomizedSearchCV
+    search.fit(X_train, y_train)
+    
+    # Get best model
+    model = search.best_estimator_
     
     # Predict probabilities on validation set
     val_pred_proba = model.predict_proba(X_val)[:, 1]
@@ -72,6 +100,7 @@ def train_gb_model(X_train, y_train, X_val, y_val):
     print("\nGradient Boosting Validation Metrics:")
     print(f"ROC AUC: {val_auc:.4f}")
     print(f"PR AUC: {pr_auc:.4f}")
+    print("\nBest parameters:", search.best_params_)
     
     # Save model
     os.makedirs('data/models', exist_ok=True)
@@ -79,78 +108,27 @@ def train_gb_model(X_train, y_train, X_val, y_val):
     
     return model
 
-def optimize_gb_model(X_train, y_train, X_val, y_val, n_iter=50, random_state=42):
-    """
-    Optimize Gradient Boosting hyperparameters using RandomizedSearchCV.
-    
-    Args:
-        X_train (pd.DataFrame or np.ndarray): Training features.
-        y_train (pd.Series or np.ndarray): Training target.
-        X_val (pd.DataFrame or np.ndarray): Validation features.
-        y_val (pd.Series or np.ndarray): Validation target.
-        n_iter (int): Number of parameter settings sampled.
-        random_state (int): Random seed for reproducibility.
-        
-    Returns:
-        Best trained Gradient Boosting model.
-    """
-    param_dist = {
-        'n_estimators': [100, 200, 300, 400, 500],
-        'learning_rate': np.linspace(0.01, 0.3, 30),
-        'max_depth': [3, 4, 5, 6, 7],
-        'min_samples_split': [2, 5, 10],
-        'min_samples_leaf': [1, 2, 4],
-        'subsample': [0.6, 0.8, 1.0],
-        'max_features': [None, 'auto', 'sqrt', 'log2']
-    }
-    
-    base_model = GradientBoostingClassifier(random_state=random_state)
-    
-    search = RandomizedSearchCV(
-        estimator=base_model,
-        param_distributions=param_dist,
-        n_iter=n_iter,
-        scoring='roc_auc',
-        cv=3,
-        verbose=2,
-        random_state=random_state,
-        n_jobs=-1
-    )
-    
-    search.fit(X_train, y_train)
-    best_model = search.best_estimator_
-    
-    # Evaluate on validation set
-    val_pred_proba = best_model.predict_proba(X_val)[:, 1]
-    val_auc = roc_auc_score(y_val, val_pred_proba)
-    precision, recall, _ = precision_recall_curve(y_val, val_pred_proba)
-    pr_auc = auc(recall, precision)
-    
-    print("\nBest Gradient Boosting Model Validation Metrics:")
-    print(f"ROC AUC: {val_auc:.4f}")
-    print(f"PR AUC: {pr_auc:.4f}")
-    print(f"Best Hyperparameters: {search.best_params_}")
-    
-    # Save best model
-    os.makedirs('data/models', exist_ok=True)
-    joblib.dump(best_model, 'data/models/gb_best_model.pkl')
-    
-    return best_model
-
 def get_feature_importance(model, feature_names):
     """
-    Retrieve and sort feature importances from a trained Gradient Boosting model.
+    Get feature importances from the gradient boosting model.
     
     Args:
         model (GradientBoostingClassifier): Trained model.
-        feature_names (list of str): Feature names.
+        feature_names (list): List of feature names.
         
     Returns:
         pd.DataFrame: Features and their importance sorted descendingly.
     """
+    importances = model.feature_importances_
+    
+    # If feature_names is not provided or lengths don't match, use generic names
+    if feature_names is None or len(feature_names) != len(importances):
+        feature_names = [f'feature_{i}' for i in range(len(importances))]
+    
+    # Create feature importance DataFrame
     importance = pd.DataFrame({
         'feature': feature_names,
-        'importance': model.feature_importances_
+        'importance': importances
     })
     
     return importance.sort_values(by='importance', ascending=False)

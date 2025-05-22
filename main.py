@@ -54,7 +54,7 @@ def main():
     (X_train_dict, X_val_dict, X_test_dict,
      X_train_processed, X_val_processed, X_test_processed,
      y_train_enc, y_val_enc, y_test_enc,
-     preprocessing_layers, preprocessor, le) = preprocess_data(
+     preprocessing_layers, preprocessor) = preprocess_data(
         X_train, X_val, X_test, y_train, y_val, y_test
     )
     
@@ -86,7 +86,7 @@ def main():
     plot_feature_importance(importance_df)
     
     print("\nEvaluating models...")
-    evaluate_models(nn_model, gb_model, X_test_dict, y_test_enc, le)
+    evaluate_models(nn_model, gb_model, X_test_dict, X_test_processed, y_test)
     
     # ROC plots require predicted probabilities
     nn_pred_proba = nn_model.predict(X_test_dict)

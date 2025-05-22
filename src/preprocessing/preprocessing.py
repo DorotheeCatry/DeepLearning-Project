@@ -41,7 +41,7 @@ def preprocess_data(X_train, X_val, X_test, y_train, y_val, y_test):
 
     # 4. Create preprocessor for scikit-learn
     numeric_transformer = StandardScaler()
-    categorical_transformer = OneHotEncoder(drop='first', sparse=False)
+    categorical_transformer = OneHotEncoder(drop='first', sparse_output=False)
 
     preprocessor = ColumnTransformer(
         transformers=[
@@ -70,4 +70,4 @@ def preprocess_data(X_train, X_val, X_test, y_train, y_val, y_test):
     return (X_train_dict, X_val_dict, X_test_dict, 
             X_train_processed, X_val_processed, X_test_processed,
             y_train_enc, y_val_enc, y_test_enc, 
-            preprocessing_layers, preprocessor, le)
+            preprocessing_layers, preprocessor)
