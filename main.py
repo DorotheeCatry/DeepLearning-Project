@@ -1,3 +1,4 @@
+```python
 import os
 import pandas as pd
 
@@ -52,22 +53,21 @@ def main():
     X_train, X_val, X_test, y_train, y_val, y_test = split_data(df, target='Churn')
     
     print("Preprocessing data...")
-    (X_train_dict, X_val_dict, X_test_dict,
-     X_train_processed, X_val_processed, X_test_processed,
-     y_train_enc, y_val_enc, y_test_enc,
-     preprocessing_layers, preprocessor) = preprocess_data(
+    (X_train_processed, X_val_processed, X_test_processed,
+     preprocessing_layers, preprocessor, feature_names,
+     y_train_enc, y_val_enc, y_test_enc) = preprocess_data(
         X_train, X_val, X_test, y_train, y_val, y_test
     )
     
     print("\nTraining neural network model...")
     # Create KerasClassifier wrapper for the neural network
-    nn_model = create_keras_classifier(build_model, preprocessing_layers)
+    nn_model = create_keras_classifier(build_model, X_train_processed.shape[1])
     
     # Train neural network
     nn_model.fit(
-        X_train_dict,
+        X_train_processed,
         y_train_enc,
-        validation_data=(X_val_dict, y_val_enc),
+        validation_data=(X_val_processed, y_val_enc),
         class_weight={
             0: 1.0,
             1: (y_train == 'no').sum() / (y_train == 'yes').sum()
@@ -84,15 +84,14 @@ def main():
         X_val_processed, y_val_enc
     )
     
-    feature_names = list(X_train.columns)
     importance_df = get_feature_importance(gb_model, feature_names)
     plot_feature_importance(importance_df)
     
     print("\nEvaluating models...")
-    evaluate_models(nn_model, gb_model, X_test_dict, X_test_processed, y_test_enc)
+    evaluate_models(nn_model, gb_model, ensemble_model, X_test_processed, y_test_enc)
     
     # ROC plots require predicted probabilities
-    nn_pred_proba = nn_model.predict(X_test_dict)
+    nn_pred_proba = nn_model.predict_proba(X_test_processed)[:, 1]
     gb_pred_proba = gb_model.predict_proba(X_test_processed)[:, 1]
     ensemble_pred_proba = ensemble_model.predict_proba(X_test_processed)[:, 1]
     
@@ -100,10 +99,12 @@ def main():
     plot_roc_curves(y_test_enc, nn_pred_proba, gb_pred_proba, ensemble_pred_proba)
     
     # Save models
-    nn_model.save("data/models/nn_model.keras")
-    print("Neural Network model saved to data/models/nn_model.keras")
+    os.makedirs('data/models', exist_ok=True)
+    nn_model.save('data/models/nn_model.keras')
+    print("Models saved to data/models/")
     
     print("Pipeline completed successfully!")
 
 if __name__ == '__main__':
     main()
+```

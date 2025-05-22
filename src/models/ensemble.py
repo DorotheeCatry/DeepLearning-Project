@@ -1,23 +1,47 @@
+```python
 import numpy as np
 from sklearn.ensemble import VotingClassifier
 from scikeras.wrappers import KerasClassifier
 from sklearn.metrics import classification_report, roc_auc_score
 import tensorflow as tf
 
-def create_keras_classifier(build_model_fn, preprocessing_layers, learning_rate=0.001):
+def create_keras_classifier(build_model_fn, input_dim, learning_rate=0.001):
     """
     Create a KerasClassifier wrapper around our neural network.
     
     Args:
         build_model_fn: Function that builds and returns the Keras model
-        preprocessing_layers: Dictionary of preprocessing layers
+        input_dim: Number of input features
         learning_rate: Learning rate for the optimizer
     
     Returns:
         KerasClassifier instance
     """
     def create_model():
-        model = build_model_fn(preprocessing_layers, learning_rate)
+        model = tf.keras.Sequential([
+            tf.keras.layers.Dense(128, activation='relu', input_dim=input_dim,
+                                kernel_regularizer=tf.keras.regularizers.l2(0.001)),
+            tf.keras.layers.BatchNormalization(),
+            tf.keras.layers.Dropout(0.3),
+            
+            tf.keras.layers.Dense(64, activation='relu',
+                                kernel_regularizer=tf.keras.regularizers.l2(0.001)),
+            tf.keras.layers.BatchNormalization(),
+            tf.keras.layers.Dropout(0.2),
+            
+            tf.keras.layers.Dense(32, activation='relu',
+                                kernel_regularizer=tf.keras.regularizers.l2(0.001)),
+            tf.keras.layers.BatchNormalization(),
+            
+            tf.keras.layers.Dense(1, activation='sigmoid')
+        ])
+        
+        model.compile(
+            optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
+            loss='binary_crossentropy',
+            metrics=['accuracy', tf.keras.metrics.AUC(name='auc')]
+        )
+        
         return model
     
     return KerasClassifier(
@@ -38,13 +62,6 @@ def create_keras_classifier(build_model_fn, preprocessing_layers, learning_rate=
 def create_voting_classifier(nn_model, gb_model):
     """
     Create a VotingClassifier that combines neural network and gradient boosting models.
-    
-    Args:
-        nn_model: Trained KerasClassifier
-        gb_model: Trained GradientBoostingClassifier
-    
-    Returns:
-        VotingClassifier instance
     """
     return VotingClassifier(
         estimators=[
@@ -57,17 +74,6 @@ def create_voting_classifier(nn_model, gb_model):
 def train_ensemble(nn_model, gb_model, X_train, y_train, X_val, y_val):
     """
     Train the ensemble model.
-    
-    Args:
-        nn_model: Neural network model (KerasClassifier)
-        gb_model: Gradient boosting model
-        X_train: Training features
-        y_train: Training targets
-        X_val: Validation features
-        y_val: Validation targets
-    
-    Returns:
-        Trained VotingClassifier
     """
     # Create and train the voting classifier
     voting_clf = create_voting_classifier(nn_model, gb_model)
@@ -84,3 +90,4 @@ def train_ensemble(nn_model, gb_model, X_train, y_train, X_val, y_val):
     print(f"ROC AUC: {roc_auc_score(y_val, y_proba):.4f}")
     
     return voting_clf
+```
