@@ -51,7 +51,10 @@ def main():
     X_train, X_val, X_test, y_train, y_val, y_test = split_data(df, target='Churn')
     
     print("Preprocessing data...")
-    X_train_dict, X_val_dict, X_test_dict, y_train_encoded, y_val_encoded, y_test_encoded, preprocessing_layers = preprocess_data(
+    (X_train_dict, X_val_dict, X_test_dict,
+     X_train_processed, X_val_processed, X_test_processed,
+     y_train_enc, y_val_enc, y_test_enc,
+     preprocessing_layers, preprocessor, le) = preprocess_data(
         X_train, X_val, X_test, y_train, y_val, y_test
     )
     
@@ -66,8 +69,8 @@ def main():
     
     history = nn_model.fit(
         X_train_dict,
-        y_train_encoded,
-        validation_data=(X_val_dict, y_val_encoded),
+        y_train_enc,
+        validation_data=(X_val_dict, y_val_enc),
         epochs=100,
         batch_size=32,
         class_weight=class_weight,
@@ -76,19 +79,19 @@ def main():
     )
     
     print("\nTraining gradient boosting model...")
-    gb_model = train_gb_model(X_train, y_train_encoded, X_val, y_val_encoded)
+    gb_model = train_gb_model(X_train_processed, y_train_enc, X_val_processed, y_val_enc)
     
     feature_names = list(X_train.columns)
     importance_df = get_feature_importance(gb_model, feature_names)
     plot_feature_importance(importance_df)
     
     print("\nEvaluating models...")
-    evaluate_models(nn_model, gb_model, X_test_dict, y_test_encoded)
+    evaluate_models(nn_model, gb_model, X_test_dict, y_test_enc, le)
     
     # ROC plots require predicted probabilities
     nn_pred_proba = nn_model.predict(X_test_dict)
-    gb_pred_proba = gb_model.predict_proba(X_test)[:, 1]
-    plot_roc_curves(y_test_encoded, nn_pred_proba, gb_pred_proba)
+    gb_pred_proba = gb_model.predict_proba(X_test_processed)[:, 1]
+    plot_roc_curves(y_test_enc, nn_pred_proba, gb_pred_proba)
     
     plot_learning_curves(history)
     
