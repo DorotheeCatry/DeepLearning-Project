@@ -10,4 +10,6 @@ logs/
 checkpoints/
 mlruns/
 *.pkl
+*.txt
+
 
