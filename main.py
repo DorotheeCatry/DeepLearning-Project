@@ -18,6 +18,10 @@ def main():
     """
     print("Starting Customer Churn Prediction Pipeline...")
     
+    # Create directories if they don't exist
+    os.makedirs('data', exist_ok=True)
+    os.makedirs('visualization', exist_ok=True)
+    
     # Load data
     print("Loading data...")
     df = load_data()
@@ -66,6 +70,10 @@ def main():
     # Plot learning curves
     plot_learning_curves(history)
     
+    # Feature importance analysis
+    print("Analyzing feature importance...")
+    feature_importance_analysis(model, preprocessor, X_test_processed)
+    
     # Save the model
     model.save("data/churn_model_tf")
     print("Model saved to data/churn_model_tf")
@@ -104,10 +112,20 @@ def explore_data(df):
     print(f"Yes: {churn_distribution['yes']:.2f}%")
     
     # Save distribution plot
-    plt.figure(figsize=(8, 6))
-    sns.countplot(x='Churn', data=df)
-    plt.title('Churn Distribution')
-    plt.savefig('data/churn_distribution.png')
+    plt.figure(figsize=(10, 6))
+    ax = sns.countplot(x='Churn', data=df, palette='viridis')
+    plt.title('Churn Distribution', fontsize=15)
+    plt.xlabel('Churn', fontsize=12)
+    plt.ylabel('Count', fontsize=12)
+    
+    # Add count labels
+    for p in ax.patches:
+        ax.annotate(f'{p.get_height()}', 
+                    (p.get_x() + p.get_width() / 2., p.get_height()), 
+                    ha = 'center', va = 'bottom', 
+                    fontsize=12)
+    
+    plt.savefig('visualization/churn_distribution.png')
     
     # Analyze categorical features
     cat_cols = df.select_dtypes(include=['object']).columns.tolist()
@@ -122,12 +140,34 @@ def explore_data(df):
     print(f"Numerical features: {len(num_cols)}")
     
     # Save correlation heatmap for numerical features
-    plt.figure(figsize=(12, 10))
+    plt.figure(figsize=(14, 12))
     corr = df[num_cols].corr()
-    sns.heatmap(corr, annot=True, cmap='coolwarm', fmt='.2f')
-    plt.title('Correlation Matrix of Numerical Features')
+    mask = np.triu(np.ones_like(corr, dtype=bool))
+    sns.heatmap(corr, annot=True, cmap='coolwarm', fmt='.2f', mask=mask)
+    plt.title('Correlation Matrix of Numerical Features', fontsize=16)
     plt.tight_layout()
-    plt.savefig('data/correlation_heatmap.png')
+    plt.savefig('visualization/correlation_heatmap.png')
+    
+    # Analyze relationship between tenure and churn
+    plt.figure(figsize=(10, 6))
+    sns.boxplot(x='Churn', y='tenure', data=df, palette='viridis')
+    plt.title('Tenure by Churn Status', fontsize=15)
+    plt.savefig('visualization/tenure_churn_boxplot.png')
+    
+    # Analyze relationship between monthly charges and churn
+    plt.figure(figsize=(10, 6))
+    sns.boxplot(x='Churn', y='MonthlyCharges', data=df, palette='viridis')
+    plt.title('Monthly Charges by Churn Status', fontsize=15)
+    plt.savefig('visualization/monthly_charges_churn_boxplot.png')
+    
+    # Analyze relationship between contract type and churn
+    plt.figure(figsize=(12, 6))
+    contract_churn = pd.crosstab(df['Contract'], df['Churn'], normalize='index') * 100
+    contract_churn.plot(kind='bar', stacked=True, figsize=(10, 6), color=['green', 'red'])
+    plt.title('Churn Rate by Contract Type', fontsize=15)
+    plt.xlabel('Contract Type', fontsize=12)
+    plt.ylabel('Percentage', fontsize=12)
+    plt.savefig('visualization/contract_churn_barplot.png')
 
 def evaluate_model(model, X_test, y_test, label_encoder):
     """
@@ -149,7 +189,7 @@ def evaluate_model(model, X_test, y_test, label_encoder):
     
     # Confusion matrix
     cm = confusion_matrix(y_test, y_pred)
-    plt.figure(figsize=(8, 6))
+    plt.figure(figsize=(10, 8))
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
                 xticklabels=label_encoder.classes_, 
                 yticklabels=label_encoder.classes_)
@@ -157,13 +197,13 @@ def evaluate_model(model, X_test, y_test, label_encoder):
     plt.ylabel('Actual')
     plt.title('Confusion Matrix')
     plt.tight_layout()
-    plt.savefig('data/confusion_matrix.png')
+    plt.savefig('visualization/confusion_matrix.png')
     
     # ROC curve
     fpr, tpr, _ = roc_curve(y_test, y_pred_proba)
     roc_auc = auc(fpr, tpr)
     
-    plt.figure(figsize=(8, 6))
+    plt.figure(figsize=(10, 8))
     plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
     plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
     plt.xlim([0.0, 1.0])
@@ -172,19 +212,19 @@ def evaluate_model(model, X_test, y_test, label_encoder):
     plt.ylabel('True Positive Rate')
     plt.title('Receiver Operating Characteristic')
     plt.legend(loc="lower right")
-    plt.savefig('data/roc_curve.png')
+    plt.savefig('visualization/roc_curve.png')
     
     # Precision-Recall curve
     precision, recall, _ = precision_recall_curve(y_test, y_pred_proba)
     avg_precision = average_precision_score(y_test, y_pred_proba)
     
-    plt.figure(figsize=(8, 6))
+    plt.figure(figsize=(10, 8))
     plt.plot(recall, precision, color='blue', lw=2, label=f'Precision-Recall curve (AP = {avg_precision:.2f})')
     plt.xlabel('Recall')
     plt.ylabel('Precision')
     plt.title('Precision-Recall Curve')
     plt.legend(loc="lower left")
-    plt.savefig('data/precision_recall_curve.png')
+    plt.savefig('visualization/precision_recall_curve.png')
 
 def plot_learning_curves(history):
     """
@@ -194,26 +234,80 @@ def plot_learning_curves(history):
         history: Keras history object from model training
     """
     # Plot accuracy
-    plt.figure(figsize=(12, 5))
+    plt.figure(figsize=(16, 6))
     plt.subplot(1, 2, 1)
     plt.plot(history.history['accuracy'])
     plt.plot(history.history['val_accuracy'])
-    plt.title('Model Accuracy')
-    plt.ylabel('Accuracy')
-    plt.xlabel('Epoch')
+    plt.title('Model Accuracy', fontsize=14)
+    plt.ylabel('Accuracy', fontsize=12)
+    plt.xlabel('Epoch', fontsize=12)
     plt.legend(['Train', 'Validation'], loc='lower right')
+    plt.grid(True, linestyle='--', alpha=0.6)
     
     # Plot loss
     plt.subplot(1, 2, 2)
     plt.plot(history.history['loss'])
     plt.plot(history.history['val_loss'])
-    plt.title('Model Loss')
-    plt.ylabel('Loss')
-    plt.xlabel('Epoch')
+    plt.title('Model Loss', fontsize=14)
+    plt.ylabel('Loss', fontsize=12)
+    plt.xlabel('Epoch', fontsize=12)
     plt.legend(['Train', 'Validation'], loc='upper right')
+    plt.grid(True, linestyle='--', alpha=0.6)
     
     plt.tight_layout()
-    plt.savefig('data/learning_curves.png')
+    plt.savefig('visualization/learning_curves.png')
+
+def feature_importance_analysis(model, preprocessor, X_test):
+    """
+    Analyze feature importance using a permutation-based approach.
+    
+    Args:
+        model: Trained model
+        preprocessor: Fitted preprocessor
+        X_test: Processed test features
+    """
+    try:
+        from sklearn.inspection import permutation_importance
+        import tensorflow as tf
+        
+        # Create a wrapper function for the model prediction
+        def model_predict(X):
+            return model.predict(X)
+        
+        # Calculate permutation importance
+        result = permutation_importance(
+            model_predict, X_test, np.argmax(model.predict(X_test), axis=1),
+            n_repeats=10, random_state=42, n_jobs=-1
+        )
+        
+        # Get feature names
+        feature_names = []
+        for name, transformer, features in preprocessor.transformers_:
+            if hasattr(transformer, 'get_feature_names_out'):
+                feature_names.extend(transformer.get_feature_names_out(features))
+            else:
+                feature_names.extend(features)
+        
+        # Create a DataFrame with feature importances
+        importance_df = pd.DataFrame({
+            'Feature': feature_names[:len(result.importances_mean)],
+            'Importance': result.importances_mean
+        }).sort_values('Importance', ascending=False)
+        
+        # Plot top 15 features
+        plt.figure(figsize=(12, 8))
+        sns.barplot(x='Importance', y='Feature', data=importance_df.head(15), palette='viridis')
+        plt.title('Feature Importance (Permutation-based)', fontsize=15)
+        plt.tight_layout()
+        plt.savefig('visualization/feature_importance.png')
+        
+        # Save feature importance to CSV
+        importance_df.to_csv('data/feature_importance.csv', index=False)
+        print("Feature importance analysis completed and saved.")
+        
+    except Exception as e:
+        print(f"Could not perform feature importance analysis: {e}")
+        print("Consider using SHAP or other methods for neural network interpretability.")
 
 if __name__ == "__main__":
     main()

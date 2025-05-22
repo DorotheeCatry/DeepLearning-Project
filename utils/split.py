@@ -39,4 +39,10 @@ def split_data(df, target='Churn', test_size=0.2, val_size=0.2, random_state=42)
     print(f"Validation set shape: {X_val.shape}")
     print(f"Test set shape: {X_test.shape}")
     
+    # Check class distribution in each split
+    print("\nClass distribution:")
+    print(f"Training set: {y_train.value_counts(normalize=True).to_dict()}")
+    print(f"Validation set: {y_val.value_counts(normalize=True).to_dict()}")
+    print(f"Test set: {y_test.value_counts(normalize=True).to_dict()}")
+    
     return X_train, X_val, X_test, y_train, y_val, y_test
