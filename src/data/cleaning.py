@@ -1,6 +1,4 @@
 import pandas as pd
-import numpy as np
-import os
 
 def clean_data():
     """
@@ -17,18 +15,17 @@ def clean_data():
         pandas DataFrame with cleaned data
     """
     
-    df = pd.read_csv('data/WA_Fn-UseC_-Telco-Customer-Churn.csv')
+    df = pd.read_csv('data/Telco-Customer-Churn.csv')
     print(f"Original data shape: {df.shape}")
     
-    
-    # Conversion de la colonne 'TotalCharges' en numérique
-    # Certaines valeurs sont des chaînes vides (" "), donc on utilise 'coerce' pour convertir ces cas en NaN
+    # Convert the 'TotalCharges' column to numeric
+    # Some values are empty strings (" "), so we use 'coerce' to convert these cases to NaN
     df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce')
     
-    # On remplace les valeurs manquantes par 0 *uniquement* pour les clients avec 0 mois d'ancienneté
-    # Un client tout juste inscrit n'a pas encore généré de facturation
+    # Replace missing values with 0 *only* for customers with 0 months of tenure
+    # A newly registered customer has not generated any billing yet
     df.loc[(df['tenure'] == 0) & (df['TotalCharges'].isna()), 'TotalCharges'] = 0
-    # Conversion au type float32 pour Deep Learning (plus efficace en mémoire)
+    # Convert to float32 type for Deep Learning (more memory efficient)
     df['TotalCharges'] = df['TotalCharges'].astype('float32')
 
     # Convert categorical columns to lowercase
@@ -41,8 +38,8 @@ def clean_data():
     df['SeniorCitizen'] = df['SeniorCitizen'].map({0: 'no', 1: 'yes'})
     
     # Save cleaned data
-    df.to_csv('data/cleaned_data.csv', index=False)
-    print("Cleaned data saved to 'data/cleaned_data.csv'")
+    df.to_csv('data/Telco-Customer-Chrun_cleaned.csv', index=False)
+    print("Cleaned data saved to 'data/Telco-Customer-Chrun_cleaned.csv'")
     
     return df
 

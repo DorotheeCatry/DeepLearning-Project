@@ -1,65 +1,78 @@
 import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout, BatchNormalization
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
+from tensorflow.keras.layers import Input, Dense, BatchNormalization, Dropout, Concatenate
+from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
 import os
 
-def create_model(input_dim, learning_rate=0.001):
+def build_model(preprocessing_layers, learning_rate=0.001):
     """
-    Create a neural network model for churn prediction.
-    
+    Build a Keras functional model with preprocessing layers integrated.
+
     Args:
-        input_dim: Number of input features
-        learning_rate: Learning rate for the optimizer
-        
+        preprocessing_layers: dict, output of preprocess_data, mapping feature name to preprocessing layer(s)
+        learning_rate: float, learning rate for optimizer
+    
     Returns:
-        Compiled Keras model
+        model: compiled Keras model
     """
-    # Set random seed for reproducibility
-    tf.random.set_seed(42)
-    
-    model = Sequential([
-        # Input layer
-        Dense(128, activation='relu', input_dim=input_dim, 
-              kernel_initializer='he_normal', 
-              kernel_regularizer=tf.keras.regularizers.l2(0.001)),
-        BatchNormalization(),
-        Dropout(0.3),
+
+    inputs = []
+    encoded_features = []
+
+    for feature_name, layer in preprocessing_layers.items():
+        if isinstance(layer, tf.keras.layers.Normalization):
+            # Numeric feature
+            inp = Input(shape=(1,), name=feature_name, dtype=tf.float32)
+            x = layer(inp)
+        else:
+            # Categorical feature: layer is tuple (lookup, onehot)
+            lookup, onehot = layer
+            inp = Input(shape=(1,), name=feature_name, dtype=tf.string)
+            x = lookup(inp)
+            x = onehot(x)
         
-        # Hidden layer 1
-        Dense(64, activation='relu', 
+        inputs.append(inp)
+        encoded_features.append(x)
+
+    # Concatenate all features
+    x = Concatenate()(encoded_features)
+
+    # Dense layers avec régularisation L2 et Dropout
+    x = Dense(128, activation='relu',
               kernel_initializer='he_normal',
-              kernel_regularizer=tf.keras.regularizers.l2(0.001)),
-        BatchNormalization(),
-        Dropout(0.2),
-        
-        # Hidden layer 2
-        Dense(32, activation='relu', 
+              kernel_regularizer=tf.keras.regularizers.l2(0.001))(x)
+    x = BatchNormalization()(x)
+    x = Dropout(0.3)(x)
+
+    x = Dense(64, activation='relu',
               kernel_initializer='he_normal',
-              kernel_regularizer=tf.keras.regularizers.l2(0.001)),
-        BatchNormalization(),
-        
-        # Output layer
-        Dense(1, activation='sigmoid')
-    ])
-    
-    # Compile the model with Adam optimizer and binary cross-entropy loss
-    optimizer = Adam(learning_rate=learning_rate)
+              kernel_regularizer=tf.keras.regularizers.l2(0.001))(x)
+    x = BatchNormalization()(x)
+    x = Dropout(0.2)(x)
+
+    x = Dense(32, activation='relu',
+              kernel_initializer='he_normal',
+              kernel_regularizer=tf.keras.regularizers.l2(0.001))(x)
+    x = BatchNormalization()(x)
+
+    # Couche de sortie binaire
+    output = Dense(1, activation='sigmoid')(x)
+
+    model = Model(inputs=inputs, outputs=output)
+
     model.compile(
-        optimizer=optimizer,
+        optimizer=Adam(learning_rate=learning_rate),
         loss='binary_crossentropy',
         metrics=[
             'accuracy',
             tf.keras.metrics.AUC(name='auc'),
-            tf.keras.metrics.Recall(name='recall'),
-            tf.keras.metrics.Precision(name='precision')
+            tf.keras.metrics.Precision(name='precision'),
+            tf.keras.metrics.Recall(name='recall')
         ]
     )
-    
-    # Print model summary
+
     model.summary()
-    
     return model
 
 def get_callbacks():
