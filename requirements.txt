@@ -7,3 +7,4 @@ seaborn>=0.11.0
 joblib>=1.1.0
 shap>=0.40.0
 scikeras>=0.12.0
+imbalanced-learn>=0.10.1

@@ -5,6 +5,7 @@ from tensorflow.keras.layers import Normalization, StringLookup, CategoryEncodin
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder
+from imblearn.over_sampling import SMOTE
 
 def preprocess_data(X_train, X_val, X_test, y_train, y_val, y_test):
     """
@@ -23,6 +24,12 @@ def preprocess_data(X_train, X_val, X_test, y_train, y_val, y_test):
 
     if 'customerID' in cat_cols:
         cat_cols.remove('customerID')
+
+    # Add feature interactions
+    X_train['tenure_x_monthly_charges'] = X_train['tenure'] * X_train['MonthlyCharges']
+    X_val['tenure_x_monthly_charges'] = X_val['tenure'] * X_val['MonthlyCharges']
+    X_test['tenure_x_monthly_charges'] = X_test['tenure'] * X_test['MonthlyCharges']
+    num_cols.append('tenure_x_monthly_charges')
 
     # 3. Create preprocessors for TensorFlow
     preprocessing_layers = {}
@@ -54,6 +61,10 @@ def preprocess_data(X_train, X_val, X_test, y_train, y_val, y_test):
     X_val_processed = preprocessor.transform(X_val)
     X_test_processed = preprocessor.transform(X_test)
 
+    # Apply SMOTE to balance training data
+    smote = SMOTE(random_state=42)
+    X_train_processed_balanced, y_train_enc_balanced = smote.fit_resample(X_train_processed, y_train_enc)
+
     # 5. Create TensorFlow input dictionaries
     def df_to_dict(df):
         data_dict = {}
@@ -72,15 +83,13 @@ def preprocess_data(X_train, X_val, X_test, y_train, y_val, y_test):
         for feat, layer in preprocessing_layers.items():
             arr = X_dict[feat]
             if isinstance(layer, Normalization):
-                # Ensure 2D shape for numeric features
                 out = layer(arr.reshape(-1, 1)).numpy()
             else:
                 lookup, onehot = layer
-                # Process categorical features
                 ints = lookup(arr.reshape(-1, 1))
                 out = onehot(ints).numpy()
             outputs.append(out)
-        return np.hstack(outputs)  # Use hstack instead of concatenate
+        return np.hstack(outputs)
 
     # Transform to arrays for neural network
     X_train_array = transform_to_array(X_train_dict)
@@ -90,7 +99,7 @@ def preprocess_data(X_train, X_val, X_test, y_train, y_val, y_test):
     return (
         X_train_dict, X_val_dict, X_test_dict,
         X_train_array, X_val_array, X_test_array,
-        y_train_enc, y_val_enc, y_test_enc,
-        X_train_processed, X_val_processed, X_test_processed,
+        y_train_enc_balanced, y_val_enc, y_test_enc,
+        X_train_processed_balanced, X_val_processed, X_test_processed,
         preprocessing_layers, preprocessor
     )
