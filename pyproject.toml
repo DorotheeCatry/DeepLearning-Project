@@ -9,4 +9,4 @@ description = "Projet de deep learning sur les ARN"
 authors = [{name = "Dorothée & Ludivine"}]
 
 [tool.setuptools.packages.find]
-where = ["."]
+where = ["src"]

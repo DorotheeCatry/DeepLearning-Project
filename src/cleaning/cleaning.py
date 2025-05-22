@@ -16,42 +16,33 @@ def clean_data():
     Returns:
         pandas DataFrame with cleaned data
     """
-    # Get data directory path
-    current_dir = os.path.dirname(__file__)
-    data_dir = os.path.join(current_dir, '..', '..', 'data')
-    os.makedirs(data_dir, exist_ok=True)
     
-    # Try to find the data file
-    csv_files = [f for f in os.listdir(data_dir) if f.endswith('.csv') and 'cleaned' not in f]
-    
-    if csv_files:
-        input_path = os.path.join(data_dir, csv_files[0])
-        print(f"Loading data from {input_path}")
-    else:
-        raise FileNotFoundError("No CSV data files found in data directory.")
-    
-    df = pd.read_csv(input_path)
+    df = pd.read_csv('data/WA_Fn-UseC_-Telco-Customer-Churn.csv')
     print(f"Original data shape: {df.shape}")
     
-    # Convert TotalCharges to float
-    df["TotalCharges"] = pd.to_numeric(df["TotalCharges"], errors='coerce')
     
-    # Impute missing values in TotalCharges with median
-    if df["TotalCharges"].isnull().sum() > 0:
-        df["TotalCharges"].fillna(df["TotalCharges"].median(), inplace=True)
+    # Conversion de la colonne 'TotalCharges' en numérique
+    # Certaines valeurs sont des chaînes vides (" "), donc on utilise 'coerce' pour convertir ces cas en NaN
+    df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce')
     
+    # On remplace les valeurs manquantes par 0 *uniquement* pour les clients avec 0 mois d'ancienneté
+    # Un client tout juste inscrit n'a pas encore généré de facturation
+    df.loc[(df['tenure'] == 0) & (df['TotalCharges'].isna()), 'TotalCharges'] = 0
+    # Conversion au type float32 pour Deep Learning (plus efficace en mémoire)
+    df['TotalCharges'] = df['TotalCharges'].astype('float32')
+
     # Convert categorical columns to lowercase
     categorical_columns = df.select_dtypes(include=['object']).columns.tolist()
     for col in categorical_columns:
-        df[col] = df[col].str.lower()
+        df[col] = df[col].str.lower() # Convert to lowercase
+        df[col] = df[col].str.strip() # Remove leading/trailing whitespace
     
     # Convert 'SeniorCitizen' from 0/1 to 'no'/'yes'
     df['SeniorCitizen'] = df['SeniorCitizen'].map({0: 'no', 1: 'yes'})
     
     # Save cleaned data
-    output_path = os.path.join(data_dir, 'cleaned_data.csv')
-    df.to_csv(output_path, index=False)
-    print(f"Cleaned data saved to {output_path}")
+    df.to_csv('data/cleaned_data.csv', index=False)
+    print("Cleaned data saved to 'data/cleaned_data.csv'")
     
     return df
 

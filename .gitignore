@@ -52,3 +52,12 @@ visualization/*.png
 # OS specific files
 .DS_Store
 Thumbs.db
+
+# distribution files
+dist/
+
+# Module files
+__init__.py
+
+# Module cache
+__pycache__/
