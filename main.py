@@ -10,7 +10,7 @@ from sklearn.metrics import classification_report, confusion_matrix, roc_curve, 
 from src.utils.load import load_data
 from src.preprocessing.preprocessing import preprocess_data
 from src.utils.split import split_data
-from models.neural_network import create_model, get_callbacks
+from models.rna_model import create_model, get_callbacks
 
 def main():
     """
