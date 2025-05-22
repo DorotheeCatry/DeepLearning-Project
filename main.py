@@ -14,7 +14,7 @@ from src.vizualization.vizualization import (
     plot_feature_importance, plot_roc_curves
 )
 
-# Import functions externalisées
+# Import functions
 from src.data.explore import explore_data
 from src.models.evaluation import evaluate_models
 
@@ -57,7 +57,6 @@ def main():
      X_train_processed, X_val_processed, X_test_processed,
      preprocessing_layers, preprocessor) = preprocess_data(
         X_train, X_val, X_test, y_train, y_val, y_test)
-    print("Preprocessing completed.")
     
     print("\nTraining gradient boosting model...")
     gb_model = train_gb_model(X_train_processed, y_train_enc, X_val_processed, y_val_enc)
@@ -72,6 +71,7 @@ def main():
         gb_model.get_params()
     )
     
+    # Get and plot feature importance
     importance_df = get_feature_importance(gb_model, X_train.columns)
     plot_feature_importance(importance_df)
     
@@ -84,10 +84,6 @@ def main():
     
     # Plot ROC curves
     plot_roc_curves(y_test_enc, None, gb_pred_proba, ensemble_pred_proba)
-    
-    # Save models
-    os.makedirs('data/models', exist_ok=True)
-    print("Saving models...")
     
     print("Pipeline completed successfully!")
 
