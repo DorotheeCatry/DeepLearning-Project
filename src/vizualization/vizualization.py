@@ -64,11 +64,12 @@ def plot_feature_importance(importance_df, top_n=15):
 def plot_roc_curves(y_test, nn_pred_proba, gb_pred_proba, ensemble_pred_proba):
     plt.figure(figsize=(10, 8))
     
-    # Neural Network ROC
-    fpr_nn, tpr_nn, _ = roc_curve(y_test, nn_pred_proba)
-    roc_auc_nn = auc(fpr_nn, tpr_nn)
-    plt.plot(fpr_nn, tpr_nn, color='blue', lw=2, 
-             label=f'Neural Network (AUC = {roc_auc_nn:.2f})')
+    # Only plot Neural Network ROC if predictions are available
+    if nn_pred_proba is not None:
+        fpr_nn, tpr_nn, _ = roc_curve(y_test, nn_pred_proba)
+        roc_auc_nn = auc(fpr_nn, tpr_nn)
+        plt.plot(fpr_nn, tpr_nn, color='blue', lw=2, 
+                label=f'Neural Network (AUC = {roc_auc_nn:.2f})')
     
     # Gradient Boosting ROC
     fpr_gb, tpr_gb, _ = roc_curve(y_test, gb_pred_proba)

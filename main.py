@@ -5,7 +5,7 @@ import pandas as pd
 from src.preprocessing.preprocessing import preprocess_data
 from src.utils.split import split_data
 from src.models.gradient_boosting import train_gb_model, get_feature_importance
-from src.models.ensemble import train_ensemble
+from src.models.ensemble import train_ensemble, ManualEnsemble
 
 # Import visualization functions
 from src.vizualization.vizualization import (
