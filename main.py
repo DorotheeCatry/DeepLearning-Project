@@ -11,6 +11,7 @@ from src.utils.load import load_data
 from src.preprocessing.preprocessing import preprocess_data
 from src.utils.split import split_data
 from models.neural_network import create_model, get_callbacks
+from models.gradient_boosting import train_gb_model, get_feature_importance
 
 def main():
     """
@@ -40,20 +41,20 @@ def main():
         X_train, X_val, X_test, y_train, y_val, y_test
     )
     
-    # Create and train model
-    print("Training neural network model...")
+    # Train Neural Network
+    print("\nTraining neural network model...")
     input_dim = X_train_processed.shape[1]
-    model = create_model(input_dim)
+    nn_model = create_model(input_dim)
     callbacks = get_callbacks()
     
-    # Calculate class weights to handle imbalance
+    # Calculate class weights
     class_weight = {
         0: 1.0,
         1: (y_train == 'no').sum() / (y_train == 'yes').sum()
     }
     
-    # Train the model
-    history = model.fit(
+    # Train the neural network
+    history = nn_model.fit(
         X_train_processed, y_train_encoded,
         validation_data=(X_val_processed, y_val_encoded),
         epochs=100,
@@ -63,20 +64,39 @@ def main():
         verbose=1
     )
     
-    # Evaluate model
-    print("Evaluating model...")
-    evaluate_model(model, X_test_processed, y_test_encoded, le)
+    # Train Gradient Boosting
+    print("\nTraining gradient boosting model...")
+    gb_model = train_gb_model(X_train_processed, y_train_encoded, 
+                             X_val_processed, y_val_encoded)
     
-    # Plot learning curves
+    # Get feature importance from GB model
+    feature_names = []
+    for name, transformer, features in preprocessor.transformers_:
+        if hasattr(transformer, 'get_feature_names_out'):
+            feature_names.extend(transformer.named_steps['onehot'].get_feature_names_out(features))
+        else:
+            feature_names.extend(features)
+    
+    importance_df = get_feature_importance(gb_model, feature_names)
+    importance_df.to_csv('data/feature_importance_gb.csv', index=False)
+    
+    # Plot feature importance
+    plt.figure(figsize=(12, 6))
+    sns.barplot(data=importance_df.head(15), x='importance', y='feature')
+    plt.title('Top 15 Features (Gradient Boosting)', fontsize=12)
+    plt.tight_layout()
+    plt.savefig('visualization/feature_importance_gb.png')
+    
+    # Evaluate models
+    print("\nEvaluating models...")
+    evaluate_models(nn_model, gb_model, X_test_processed, y_test_encoded, le)
+    
+    # Plot learning curves for neural network
     plot_learning_curves(history)
     
-    # Feature importance analysis
-    print("Analyzing feature importance...")
-    feature_importance_analysis(model, preprocessor, X_test_processed)
-    
-    # Save the model
-    model.save("data/churn_model_tf")
-    print("Model saved to data/churn_model_tf")
+    # Save the models
+    nn_model.save("data/churn_model_tf")
+    print("Neural Network model saved to data/churn_model_tf")
     
     # Save the preprocessor
     import joblib
@@ -84,6 +104,49 @@ def main():
     print("Preprocessor saved to data/preprocessor.pkl")
     
     print("Pipeline completed successfully!")
+
+def evaluate_models(nn_model, gb_model, X_test, y_test, label_encoder):
+    """
+    Evaluate both neural network and gradient boosting models.
+    """
+    # Neural Network predictions
+    nn_pred_proba = nn_model.predict(X_test)
+    nn_pred = (nn_pred_proba > 0.5).astype(int)
+    
+    # Gradient Boosting predictions
+    gb_pred_proba = gb_model.predict_proba(X_test)[:, 1]
+    gb_pred = (gb_pred_proba > 0.5).astype(int)
+    
+    # Print classification reports
+    print("\nNeural Network Classification Report:")
+    print(classification_report(y_test, nn_pred, target_names=label_encoder.classes_))
+    
+    print("\nGradient Boosting Classification Report:")
+    print(classification_report(y_test, gb_pred, target_names=label_encoder.classes_))
+    
+    # Plot ROC curves
+    plt.figure(figsize=(10, 8))
+    
+    # Neural Network ROC
+    fpr_nn, tpr_nn, _ = roc_curve(y_test, nn_pred_proba)
+    roc_auc_nn = auc(fpr_nn, tpr_nn)
+    plt.plot(fpr_nn, tpr_nn, color='blue', lw=2, 
+             label=f'Neural Network (AUC = {roc_auc_nn:.2f})')
+    
+    # Gradient Boosting ROC
+    fpr_gb, tpr_gb, _ = roc_curve(y_test, gb_pred_proba)
+    roc_auc_gb = auc(fpr_gb, tpr_gb)
+    plt.plot(fpr_gb, tpr_gb, color='red', lw=2, 
+             label=f'Gradient Boosting (AUC = {roc_auc_gb:.2f})')
+    
+    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('ROC Curves Comparison')
+    plt.legend(loc="lower right")
+    plt.savefig('visualization/roc_curves_comparison.png')
 
 def explore_data(df):
     """
@@ -169,63 +232,6 @@ def explore_data(df):
     plt.ylabel('Percentage', fontsize=12)
     plt.savefig('visualization/contract_churn_barplot.png')
 
-def evaluate_model(model, X_test, y_test, label_encoder):
-    """
-    Evaluate the model performance on test data.
-    
-    Args:
-        model: Trained Keras model
-        X_test: Processed test features
-        y_test: Encoded test target
-        label_encoder: Label encoder for the target variable
-    """
-    # Predict probabilities
-    y_pred_proba = model.predict(X_test)
-    y_pred = (y_pred_proba > 0.5).astype(int)
-    
-    # Classification report
-    print("\nClassification Report:")
-    print(classification_report(y_test, y_pred, target_names=label_encoder.classes_))
-    
-    # Confusion matrix
-    cm = confusion_matrix(y_test, y_pred)
-    plt.figure(figsize=(10, 8))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
-                xticklabels=label_encoder.classes_, 
-                yticklabels=label_encoder.classes_)
-    plt.xlabel('Predicted')
-    plt.ylabel('Actual')
-    plt.title('Confusion Matrix')
-    plt.tight_layout()
-    plt.savefig('visualization/confusion_matrix.png')
-    
-    # ROC curve
-    fpr, tpr, _ = roc_curve(y_test, y_pred_proba)
-    roc_auc = auc(fpr, tpr)
-    
-    plt.figure(figsize=(10, 8))
-    plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
-    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('Receiver Operating Characteristic')
-    plt.legend(loc="lower right")
-    plt.savefig('visualization/roc_curve.png')
-    
-    # Precision-Recall curve
-    precision, recall, _ = precision_recall_curve(y_test, y_pred_proba)
-    avg_precision = average_precision_score(y_test, y_pred_proba)
-    
-    plt.figure(figsize=(10, 8))
-    plt.plot(recall, precision, color='blue', lw=2, label=f'Precision-Recall curve (AP = {avg_precision:.2f})')
-    plt.xlabel('Recall')
-    plt.ylabel('Precision')
-    plt.title('Precision-Recall Curve')
-    plt.legend(loc="lower left")
-    plt.savefig('visualization/precision_recall_curve.png')
-
 def plot_learning_curves(history):
     """
     Plot learning curves from model training history.
@@ -256,58 +262,6 @@ def plot_learning_curves(history):
     
     plt.tight_layout()
     plt.savefig('visualization/learning_curves.png')
-
-def feature_importance_analysis(model, preprocessor, X_test):
-    """
-    Analyze feature importance using a permutation-based approach.
-    
-    Args:
-        model: Trained model
-        preprocessor: Fitted preprocessor
-        X_test: Processed test features
-    """
-    try:
-        from sklearn.inspection import permutation_importance
-        import tensorflow as tf
-        
-        # Create a wrapper function for the model prediction
-        def model_predict(X):
-            return model.predict(X)
-        
-        # Calculate permutation importance
-        result = permutation_importance(
-            model_predict, X_test, np.argmax(model.predict(X_test), axis=1),
-            n_repeats=10, random_state=42, n_jobs=-1
-        )
-        
-        # Get feature names
-        feature_names = []
-        for name, transformer, features in preprocessor.transformers_:
-            if hasattr(transformer, 'get_feature_names_out'):
-                feature_names.extend(transformer.get_feature_names_out(features))
-            else:
-                feature_names.extend(features)
-        
-        # Create a DataFrame with feature importances
-        importance_df = pd.DataFrame({
-            'Feature': feature_names[:len(result.importances_mean)],
-            'Importance': result.importances_mean
-        }).sort_values('Importance', ascending=False)
-        
-        # Plot top 15 features
-        plt.figure(figsize=(12, 8))
-        sns.barplot(x='Importance', y='Feature', data=importance_df.head(15), palette='viridis')
-        plt.title('Feature Importance (Permutation-based)', fontsize=15)
-        plt.tight_layout()
-        plt.savefig('visualization/feature_importance.png')
-        
-        # Save feature importance to CSV
-        importance_df.to_csv('data/feature_importance.csv', index=False)
-        print("Feature importance analysis completed and saved.")
-        
-    except Exception as e:
-        print(f"Could not perform feature importance analysis: {e}")
-        print("Consider using SHAP or other methods for neural network interpretability.")
 
 if __name__ == "__main__":
     main()
