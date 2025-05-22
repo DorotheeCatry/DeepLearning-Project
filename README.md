@@ -1,30 +1,36 @@
 # Customer Churn Prediction
 
-This project implements a deep learning model to predict customer churn for a telecom company using TensorFlow.
+This project implements an ensemble learning approach combining deep learning and gradient boosting models to predict customer churn for a telecom company.
 
 ## Project Overview
 
-Customer churn prediction is a critical task for businesses to identify customers who are likely to discontinue their service. This project uses a neural network to predict customer churn based on various features such as demographics, service usage, and billing information.
+Customer churn prediction is a critical task for businesses to identify customers who are likely to discontinue their service. This project uses an ensemble of neural networks and gradient boosting to predict customer churn based on various features such as demographics, service usage, and billing information.
 
 ## Project Structure
 
 ```
-├── data/               # Data directory for storing datasets and model
+├── data/               # Data directory
+│   ├── models/        # Saved models
+│   └── logs/         # Training logs
 ├── visualization/      # Visualizations and plots
 ├── cleaning/           # Data cleaning scripts
 │   └── cleaning_data.py
 ├── src/               
 │   ├── preprocessing/  # Preprocessing modules
 │   │   └── preprocessing.py
-│   └── utils/          # Utility functions
-│       ├── load.py     # Data loading functions
-│       └── split.py    # Data splitting functions
-├── models/             # Model definitions
-│   └── neural_network.py # Neural network architecture
-├── main.py             # Main training script
-├── inference.py        # Inference script for making predictions
-├── explanation.txt     # Detailed explanation of the ML process
-└── README.md           # Project documentation
+│   ├── models/        # Model definitions
+│   │   ├── neural_network.py
+│   │   ├── gradient_boosting.py
+│   │   └── ensemble.py
+│   ├── utils/         # Utility functions
+│   │   ├── load.py
+│   │   └── split.py
+│   └── visualization/ # Visualization functions
+│       └── visualization.py
+├── main.py            # Main training script
+├── inference.py       # Inference script
+├── explanation.txt    # Detailed ML process explanation
+└── README.md          # Project documentation
 ```
 
 ## Setup and Installation
@@ -44,29 +50,36 @@ python cleaning/cleaning_data.py
 python main.py
 ```
 
-## Data Preprocessing
-
-The data preprocessing pipeline includes:
-- Handling missing values in TotalCharges
-- Converting categorical variables to lowercase
-- Encoding categorical features using one-hot encoding
-- Standardizing numerical features
-- Splitting data into train/validation/test sets with stratification
-
 ## Model Architecture
 
-The neural network model consists of:
+### Neural Network
 - 3 hidden layers (128, 64, 32 units)
-- Batch normalization and dropout for regularization
-- L2 regularization on weights
+- Batch normalization and dropout
+- L2 regularization
 - Binary cross-entropy loss
 - Adam optimizer
-- Class weights to handle imbalance
-- Early stopping and model checkpointing
+
+### Gradient Boosting
+- Optimized hyperparameters via RandomizedSearchCV
+- Feature importance analysis
+- Early stopping to prevent overfitting
+
+### Ensemble Model
+- Soft voting classifier combining neural network and gradient boosting
+- Leverages strengths of both models
+- Improved robustness and performance
+- Automatic hyperparameter optimization
+
+## Data Preprocessing
+
+- Missing value handling in TotalCharges
+- Categorical variable encoding
+- Numerical feature standardization
+- Stratified data splitting (train/validation/test)
 
 ## Evaluation Metrics
 
-The model is evaluated using:
+Models are evaluated using:
 - Accuracy
 - ROC-AUC
 - Precision
@@ -74,41 +87,41 @@ The model is evaluated using:
 - F1-score
 - Confusion matrix
 
-## Inference
-
-To make predictions on new data, use the `inference.py` script:
-
-```bash
-python inference.py
-```
-
-For batch predictions, you can provide a CSV file:
-
-```python
-from inference import batch_predict
-predictions = batch_predict('path/to/customers.csv')
-```
-
 ## Results
 
-The model achieves:
-- ROC-AUC: ~0.85
-- Accuracy: ~0.80
-- Recall for churn class: ~0.70
+The ensemble model achieves:
+- Higher ROC-AUC compared to individual models
+- Improved robustness
+- Better generalization
+- More reliable predictions
 
 ## Feature Importance
 
-The most important features for predicting churn are:
-1. Contract type (month-to-month contracts have higher churn)
-2. Tenure (shorter tenure correlates with higher churn)
-3. Internet service type (fiber optic users have higher churn)
-4. Monthly charges (higher charges correlate with higher churn)
-5. Payment method (electronic check users have higher churn)
+Key predictors of churn:
+1. Contract type
+2. Tenure
+3. Internet service type
+4. Monthly charges
+5. Payment method
+
+## Inference
+
+To make predictions:
+
+```python
+from inference import predict_churn
+
+# Single prediction
+prediction = predict_churn(customer_data)
+
+# Batch predictions
+predictions = predict_churn(customers_df)
+```
 
 ## Future Improvements
 
-- Hyperparameter tuning using Keras Tuner
-- Feature engineering to create more predictive variables
-- Ensemble methods to improve performance
-- Explainability using SHAP values
-- Deployment as a REST API
+- Hyperparameter tuning optimization
+- Additional feature engineering
+- Model interpretability (SHAP values)
+- API deployment
+- Real-time prediction capabilities
