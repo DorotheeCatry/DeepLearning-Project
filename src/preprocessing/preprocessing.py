@@ -72,14 +72,17 @@ def preprocess_data(X_train, X_val, X_test, y_train, y_val, y_test):
         for feat, layer in preprocessing_layers.items():
             arr = X_dict[feat]
             if isinstance(layer, Normalization):
+                # Ensure 2D shape for numeric features
                 out = layer(arr.reshape(-1, 1)).numpy()
             else:
                 lookup, onehot = layer
-                ints = lookup(arr)
+                # Process categorical features
+                ints = lookup(arr.reshape(-1, 1))
                 out = onehot(ints).numpy()
             outputs.append(out)
-        return np.concatenate(outputs, axis=1)
+        return np.hstack(outputs)  # Use hstack instead of concatenate
 
+    # Transform to arrays for neural network
     X_train_array = transform_to_array(X_train_dict)
     X_val_array = transform_to_array(X_val_dict)
     X_test_array = transform_to_array(X_test_dict)
