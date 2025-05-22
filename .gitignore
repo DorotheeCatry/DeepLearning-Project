@@ -1,7 +1,54 @@
-.venv
-__init__.py
-*.csv
-__pycache__
-.__pycache__
+# Byte-compiled / optimized / DLL files
 __pycache__/
-/__pycache__
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Model files
+data/churn_model_tf/
+data/preprocessor.pkl
+data/feature_importance.csv
+data/churn_predictions.csv
+
+# Logs and checkpoints
+data/logs/
+data/checkpoints/
+
+# Visualization outputs
+visualization/*.png
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS specific files
+.DS_Store
+Thumbs.db

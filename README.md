@@ -13,10 +13,12 @@ Customer churn prediction is a critical task for businesses to identify customer
 ├── visualization/      # Visualizations and plots
 ├── cleaning/           # Data cleaning scripts
 │   └── cleaning_data.py
-├── utils/              # Utility functions
-│   ├── load.py         # Data loading functions
-│   ├── preprocessing.py # Data preprocessing functions
-│   └── split.py        # Data splitting functions
+├── src/               
+│   ├── preprocessing/  # Preprocessing modules
+│   │   └── preprocessing.py
+│   └── utils/          # Utility functions
+│       ├── load.py     # Data loading functions
+│       └── split.py    # Data splitting functions
 ├── models/             # Model definitions
 │   └── neural_network.py # Neural network architecture
 ├── main.py             # Main training script

@@ -7,9 +7,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix, roc_curve, auc, precision_recall_curve, average_precision_score
 
 # Import custom modules
-from utils.load import load_data
-from utils.preprocessing import preprocess_data
-from utils.split import split_data
+from src.utils.load import load_data
+from src.preprocessing.preprocessing import preprocess_data
+from src.utils.split import split_data
 from models.neural_network import create_model, get_callbacks
 
 def main():
