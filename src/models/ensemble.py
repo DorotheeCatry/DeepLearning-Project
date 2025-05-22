@@ -4,22 +4,39 @@ from sklearn.metrics import classification_report, roc_auc_score, confusion_matr
 import numpy as np
 import joblib
 
-from src.models.neural_network import build_model  # Assure-toi que cette fonction existe et retourne un modèle Keras compilé
+from src.models.neural_network import build_model
 
-
-def train_ensemble(X_train, X_val, y_train, y_val, best_gb_params, nn_epochs=100, batch_size=32):
-    # 1. Build KerasClassifier (with SciKeras)
+def train_ensemble(X_train, X_val, y_train, y_val, preprocessing_layers, gb_params, nn_epochs=100, batch_size=32):
+    """
+    Train an ensemble model combining neural network and gradient boosting.
+    
+    Args:
+        X_train: Training features dictionary for neural network
+        X_val: Validation features dictionary for neural network
+        y_train: Training labels (encoded)
+        y_val: Validation labels (encoded)
+        preprocessing_layers: Dictionary of preprocessing layers for neural network
+        gb_params: Gradient boosting parameters
+        nn_epochs: Number of epochs for neural network training
+        batch_size: Batch size for neural network training
+    """
+    # 1. Build KerasClassifier
     nn_clf = KerasClassifier(
-        model=build_model,
+        model=lambda: build_model(preprocessing_layers),
         epochs=nn_epochs,
         batch_size=batch_size,
         verbose=0
     )
 
-    # 2. Build Gradient Boosting Classifier with best hyperparameters
-    gb_clf = GradientBoostingClassifier(**best_gb_params)
+    # 2. Build Gradient Boosting Classifier with filtered parameters
+    allowed_params = {
+        'n_estimators', 'learning_rate', 'max_depth', 'min_samples_split',
+        'min_samples_leaf', 'subsample', 'max_features', 'random_state'
+    }
+    filtered_params = {k: v for k, v in gb_params.items() if k in allowed_params}
+    gb_clf = GradientBoostingClassifier(**filtered_params)
 
-    # 3. Voting Ensemble (soft voting)
+    # 3. Create and train voting ensemble
     voting_clf = VotingClassifier(
         estimators=[
             ('nn', nn_clf),
@@ -46,7 +63,7 @@ def train_ensemble(X_train, X_val, y_train, y_val, best_gb_params, nn_epochs=100
     print("Confusion Matrix:")
     print(confusion_matrix(y_val, y_pred))
 
-    # Optionally save model
-    joblib.dump(voting_clf, "ensemble_model.pkl")
+    # Save model
+    joblib.dump(voting_clf, "data/models/ensemble_model.pkl")
 
     return voting_clf
