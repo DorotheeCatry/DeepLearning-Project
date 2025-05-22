@@ -1,0 +1,46 @@
+import tensorflow as tf
+import numpy as np
+import pandas as pd
+from tensorflow import keras
+from sklearn.model_selection import train_test_split
+from pipeline.pipeline_keras import get_preprocessing_model, prepare_inputs, build_model
+
+# Chargement des données
+df = pd.read_csv("data/cleaned_datas.csv")  # ou autre source
+
+# Transformation de la cible en binaire (1 pour 'yes', 0 pour 'no')
+y = (df['Churn'] == 'yes').astype(int).values
+
+# Séparation train/test stratifiée
+X_train_df, X_test_df, y_train, y_test = train_test_split(
+    df, y, test_size=0.2, random_state=42, stratify=y
+)
+
+# Création du modèle preprocessing basé sur le train uniquement pour éviter la fuite de données
+preprocessing_model, inputs, encoded_features, encoded_column_names = get_preprocessing_model(X_train_df)
+
+# Préparation des entrées pour train et test
+X_train = prepare_inputs(X_train_df)
+X_test = prepare_inputs(X_test_df)
+
+# Construction du modèle complet
+model = build_model(preprocessing_model)
+
+# Entraînement avec validation (ex: 20% du train pour validation)
+history = model.fit(
+    X_train, y_train,
+    validation_split=0.2,
+    epochs=10,
+    batch_size=32,
+    verbose=1
+)
+
+# Évaluation finale sur le test set
+eval_results = model.evaluate(X_test, y_test, verbose=1)
+print(f"Test Loss: {eval_results[0]:.4f}, Test Accuracy: {eval_results[1]:.4f}, Test AUC: {eval_results[2]:.4f}")
+
+# Prédiction sur le test set (exemple)
+y_pred_proba = model.predict(X_test)
+
+# Tu peux aussi sauvegarder le modèle :
+model.save("data/churn_model_tf")

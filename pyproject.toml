@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "deep_learning_project"
+version = "0.1.0"
+description = "Projet de deep learning sur les ARN"
+authors = [{name = "Dorothée & Ludivine"}]
+
+[tool.setuptools.packages.find]
+where = ["."]

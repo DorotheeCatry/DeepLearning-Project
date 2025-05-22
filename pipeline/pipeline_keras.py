@@ -1,9 +1,9 @@
 # %%
 import pandas as pd
-import tensorflow as tf
 import numpy as np
-
-from tensorflow.keras.layers import StringLookup, CategoryEncoding, Normalization, Lambda, Concatenate
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras.layers import Dense, StringLookup, CategoryEncoding, Normalization, Lambda, Concatenate
 from tensorflow.keras.models import Model
 
 # %%
@@ -49,10 +49,17 @@ multiclass_features = [
 ]
 
 # %%
-def get_preprocessing_layers(df):
+def get_preprocessing_model(df):
     inputs = {}
     encoded_features = []
     encoded_column_names = []
+
+    class CastMinusOne(tf.keras.layers.Layer):
+        def call(self, inputs):
+            return tf.cast(inputs - 1, tf.float32)
+        
+        def compute_output_shape(self, input_shape):
+            return input_shape
 
     # Variables numériques
     for feature in numeric_features:
@@ -77,7 +84,8 @@ def get_preprocessing_layers(df):
         vocab = binary_vocab.get(feature, ["no", "yes"])  # fallback si pas dans dict
         lookup = StringLookup(vocabulary=vocab, output_mode="int", oov_token=None)
         encoded_int = lookup(inputs[feature])
-        encoded = Lambda(lambda x: tf.cast(x - 1, tf.float32))(encoded_int)
+        # encoded = Lambda(lambda x: tf.cast(x - 1, tf.float32))(encoded_int)
+        encoded = CastMinusOne()(encoded_int)
         encoded_features.append(encoded)
         encoded_column_names.append(feature)
         # print(f"Binary feature '{feature}' -> 1 column")
@@ -85,7 +93,7 @@ def get_preprocessing_layers(df):
     # Variables binaires numériques (0/1)
     for feature in binary_numeric_features:
         inputs[feature] = tf.keras.Input(shape=(1,), dtype=tf.int32, name=feature)
-        encoded = Lambda(lambda x: tf.cast(x, tf.float32))(inputs[feature])
+        encoded = Lambda(lambda x: tf.cast(x, tf.float32), output_shape=lambda s: s)(inputs[feature])
         encoded_features.append(encoded)
         encoded_column_names.append(feature)
         # print(f"Binary numeric feature '{feature}' -> 1 column")
@@ -119,7 +127,7 @@ target_lookup = tf.keras.layers.StringLookup(vocabulary=["no", "yes"], output_mo
 y = target_lookup(df[target_col].values) - 1  # tenseur ou numpy array
 
 # %%
-preprocessing_model, inputs, encoded_features, encoded_column_names = get_preprocessing_layers(df)
+preprocessing_model, inputs, encoded_features, encoded_column_names = get_preprocessing_model(df)
 
 # %%
 preprocessing_model
@@ -145,7 +153,38 @@ encoded_df
 # %%
 encoded_df.to_csv('data/encoded_df.csv', index=False)
 # Sauvegarde du modèle de prétraitement Keras
-preprocessing_model.save('data/preprocessing_model.keras')
+
+def build_model(preprocessing_model):
+    inputs = preprocessing_model.inputs
+    x = preprocessing_model.outputs[0]
+    x = Dense(128, activation="relu")(x)
+    x = Dense(64, activation="relu")(x)
+    output = Dense(1, activation="sigmoid")(x)  # Prédiction binaire
+
+    model = Model(inputs=inputs, outputs=output)
+    model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy", tf.keras.metrics.AUC()])
+    return model
+
+def prepare_inputs(df):
+    dict_inputs = {}
+    
+    for feature in numeric_features + binary_numeric_features:
+        dict_inputs[feature] = np.array(df[feature], dtype=np.float32).reshape(-1, 1)
+    
+    for feature in binary_features + multiclass_features:
+        # convertir en str python natif (sûr)
+        native_strs = df[feature].astype(str).values
+        
+        # créer un np.array dtype 'U' (Unicode variable-length)
+        dict_inputs[feature] = np.array(native_strs, dtype='U').reshape(-1, 1)
+        
+        # --- ou encore mieux ---
+        dict_inputs[feature] = df[feature].astype(str).tolist()
+
+    return dict_inputs
+
+
+
 # %% [markdown]
 # ### **Keras Normalization Layer**
 # La couche tf.keras.layers.Normalization est une couche de prétraitement qui permet de normaliser les données numériques en apprenant les statistiques (moyenne, écart-type) du jeu de données.
