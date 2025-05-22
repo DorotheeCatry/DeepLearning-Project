@@ -66,8 +66,29 @@ def preprocess_data(X_train, X_val, X_test, y_train, y_val, y_test):
     X_train_dict = df_to_dict(X_train)
     X_val_dict = df_to_dict(X_val)
     X_test_dict = df_to_dict(X_test)
+    
+    def transform_to_array(X_dict):
+        # on passe chaque feature via son layer, puis on concatène
+        outputs = []
+        for feat, layer in preprocessing_layers.items():
+            arr = X_dict[feat]
+            if isinstance(layer, Normalization):
+                # numérique
+                out = layer(arr.reshape(-1,1)).numpy()
+            else:
+                lookup, onehot = layer
+                ints = lookup(arr)
+                out = onehot(ints).numpy()
+            outputs.append(out)
+        return np.concatenate(outputs, axis=1)
 
-    return (X_train_dict, X_val_dict, X_test_dict, 
-            X_train_processed, X_val_processed, X_test_processed,
-            y_train_enc, y_val_enc, y_test_enc, 
-            preprocessing_layers, preprocessor)
+    X_train_array = transform_to_array(X_train_dict)
+    X_val_array   = transform_to_array(X_val_dict)
+    X_test_array  = transform_to_array(X_test_dict)
+
+    return (
+        X_train_dict, X_val_dict, X_test_dict,
+        X_train_array, X_val_array, X_test_array,
+        y_train_enc, y_val_enc, y_test_enc, X_train_processed, X_val_processed, X_test_processed,
+        preprocessing_layers, preprocessor
+    )
