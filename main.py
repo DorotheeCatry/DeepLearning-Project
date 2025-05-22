@@ -18,7 +18,6 @@ from src.vizualization.vizualization import (
 from src.data.explore import explore_data
 from src.models.evaluation import evaluate_models
 
-
 def main():
     print("Starting Customer Churn Prediction Pipeline...")
     
@@ -52,13 +51,12 @@ def main():
     X_train, X_val, X_test, y_train, y_val, y_test = split_data(df, target='Churn')
     
     print("Preprocessing data...")
-    X_train_processed, X_test_processed, X_val_processed, y_train_encoded, y_val_encoded, y_test_encoded, preprocessor, le = preprocess_data(
+    X_train_dict, X_val_dict, X_test_dict, y_train_encoded, y_val_encoded, y_test_encoded, preprocessing_layers = preprocess_data(
         X_train, X_val, X_test, y_train, y_val, y_test
     )
     
     print("\nTraining neural network model...")
-    input_dim = X_train_processed.shape[1]
-    nn_model = build_model(input_dim)
+    nn_model = build_model(preprocessing_layers)
     callbacks = get_callbacks()
     
     class_weight = {
@@ -67,8 +65,9 @@ def main():
     }
     
     history = nn_model.fit(
-        X_train_processed, y_train_encoded,
-        validation_data=(X_val_processed, y_val_encoded),
+        X_train_dict,
+        y_train_encoded,
+        validation_data=(X_val_dict, y_val_encoded),
         epochs=100,
         batch_size=32,
         class_weight=class_weight,
@@ -77,39 +76,24 @@ def main():
     )
     
     print("\nTraining gradient boosting model...")
-    gb_model = train_gb_model(X_train_processed, y_train_encoded, 
-                             X_val_processed, y_val_encoded)
+    gb_model = train_gb_model(X_train, y_train_encoded, X_val, y_val_encoded)
     
-    feature_names = []
-    for name, transformer, features in preprocessor.transformers_:
-        if name == 'num':
-            feature_names.extend(features)
-        elif name == 'cat':
-            encoder = transformer.named_steps['onehotencoder']
-            if hasattr(encoder, 'get_feature_names_out'):
-                feature_names.extend(encoder.get_feature_names_out(features))
-    
+    feature_names = list(X_train.columns)
     importance_df = get_feature_importance(gb_model, feature_names)
-    importance_df.to_csv('data/feature_importance_gb.csv', index=False)
-    
     plot_feature_importance(importance_df)
     
     print("\nEvaluating models...")
-    evaluate_models(nn_model, gb_model, X_test_processed, y_test_encoded, le)
+    evaluate_models(nn_model, gb_model, X_test_dict, y_test_encoded)
     
     # ROC plots require predicted probabilities
-    nn_pred_proba = nn_model.predict(X_test_processed)
-    gb_pred_proba = gb_model.predict_proba(X_test_processed)[:, 1]
+    nn_pred_proba = nn_model.predict(X_test_dict)
+    gb_pred_proba = gb_model.predict_proba(X_test)[:, 1]
     plot_roc_curves(y_test_encoded, nn_pred_proba, gb_pred_proba)
     
     plot_learning_curves(history)
     
     nn_model.save("data/churn_model.keras")
     print("Neural Network model saved to data/churn_model.keras")
-    
-    import joblib
-    joblib.dump(preprocessor, "data/preprocessor.pkl")
-    print("Preprocessor saved to data/preprocessor.pkl")
     
     print("Pipeline completed successfully!")
 
