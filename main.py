@@ -69,14 +69,18 @@ def main():
     gb_model = train_gb_model(X_train_processed, y_train_encoded, 
                              X_val_processed, y_val_encoded)
     
-    # Get feature importance from GB model
+    # Get feature names from preprocessor
     feature_names = []
     for name, transformer, features in preprocessor.transformers_:
-        if hasattr(transformer, 'get_feature_names_out'):
-            feature_names.extend(transformer.named_steps['onehot'].get_feature_names_out(features))
-        else:
+        if name == 'num':
             feature_names.extend(features)
+        elif name == 'cat':
+            # Get feature names from OneHotEncoder
+            encoder = transformer.named_steps['onehotencoder']
+            if hasattr(encoder, 'get_feature_names_out'):
+                feature_names.extend(encoder.get_feature_names_out(features))
     
+    # Get feature importance from GB model
     importance_df = get_feature_importance(gb_model, feature_names)
     importance_df.to_csv('data/feature_importance_gb.csv', index=False)
     
@@ -191,7 +195,7 @@ def explore_data(df):
     plt.savefig('visualization/churn_distribution.png')
     
     # Analyze categorical features
-    cat_cols = df.select_dtypes(include=['object']).columns.tolist()
+    cat_cols = df.select_dtypes(include=['object', 'bool']).columns.tolist()
     cat_cols.remove('customerID')  # Remove ID column
     if 'Churn' in cat_cols:
         cat_cols.remove('Churn')  # Remove target column

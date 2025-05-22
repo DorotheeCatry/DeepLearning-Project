@@ -43,7 +43,7 @@ def preprocess_data(X_train, X_val, X_test, y_train, y_val, y_test):
     # Create preprocessing pipeline for categorical features
     cat_pipeline = Pipeline([
         ('imputer', SimpleImputer(strategy='most_frequent')),
-        ('onehot', OneHotEncoder(drop='first', handle_unknown='ignore', sparse_output=False))
+        ('onehotencoder', OneHotEncoder(drop='first', handle_unknown='ignore', sparse_output=False))
     ])
     
     # Create preprocessing pipeline
@@ -63,16 +63,5 @@ def preprocess_data(X_train, X_val, X_test, y_train, y_val, y_test):
     print(f"Processed training data shape: {X_train_processed.shape}")
     print(f"Processed validation data shape: {X_val_processed.shape}")
     print(f"Processed test data shape: {X_test_processed.shape}")
-    
-    # Get feature names
-    feature_names = []
-    for name, transformer, features in preprocessor.transformers_:
-        if name == 'num':
-            feature_names.extend(features)
-        elif name == 'cat':
-            if hasattr(transformer.named_steps['onehot'], 'get_feature_names_out'):
-                feature_names.extend(transformer.named_steps['onehot'].get_feature_names_out(features))
-    
-    print(f"Number of features after preprocessing: {len(feature_names)}")
     
     return X_train_processed, X_test_processed, X_val_processed, y_train_encoded, y_val_encoded, y_test_encoded, preprocessor, le
