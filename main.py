@@ -8,6 +8,7 @@ from utils.preprocessing import preprocess
 from utils.split import split_data
 
 def main():
+    df = load_data()
     pass
 
 #A mettre à la fin
