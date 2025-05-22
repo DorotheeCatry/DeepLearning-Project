@@ -16,14 +16,21 @@ def create_model(input_dim, learning_rate=0.001):
         Compiled Keras model
     """
     model = Sequential([
+        # Input layer
         Dense(128, activation='relu', input_dim=input_dim),
         BatchNormalization(),
         Dropout(0.3),
+        
+        # Hidden layer 1
         Dense(64, activation='relu'),
         BatchNormalization(),
         Dropout(0.2),
+        
+        # Hidden layer 2
         Dense(32, activation='relu'),
         BatchNormalization(),
+        
+        # Output layer
         Dense(1, activation='sigmoid')
     ])
     
