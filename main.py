@@ -52,25 +52,8 @@ def main():
     X_train, X_val, X_test, y_train, y_val, y_test = split_data(df, target='Churn')
     
     print("Preprocessing data...")
-    (X_train_processed, X_val_processed, X_test_processed,
-     preprocessing_layers, preprocessor, feature_names,
-     y_train_enc, y_val_enc, y_test_enc) = preprocess_data(
+    X_train_processed, X_val_processed, X_test_processed, y_train_enc, y_val_enc, y_test_enc = preprocess_data(
         X_train, X_val, X_test, y_train, y_val, y_test
-    )
-    
-    print("\nTraining neural network model...")
-    # Create KerasClassifier wrapper for the neural network
-    nn_model = create_keras_classifier(build_model, X_train_processed.shape[1])
-    
-    # Train neural network
-    nn_model.fit(
-        X_train_processed,
-        y_train_enc,
-        validation_data=(X_val_processed, y_val_enc),
-        class_weight={
-            0: 1.0,
-            1: (y_train == 'no').sum() / (y_train == 'yes').sum()
-        }
     )
     
     print("\nTraining gradient boosting model...")
@@ -78,29 +61,26 @@ def main():
     
     print("\nTraining ensemble model...")
     ensemble_model = train_ensemble(
-        nn_model, gb_model,
-        X_train_processed, y_train_enc,
-        X_val_processed, y_val_enc
+        None,  # Neural network will be created inside train_ensemble
+        gb_model,
+        X_train_processed,
+        y_train_enc,
+        X_val_processed,
+        y_val_enc
     )
     
-    importance_df = get_feature_importance(gb_model, feature_names)
+    importance_df = get_feature_importance(gb_model, X_train.columns)
     plot_feature_importance(importance_df)
     
     print("\nEvaluating models...")
-    evaluate_models(nn_model, gb_model, ensemble_model, X_test_processed, y_test_enc)
+    evaluate_models(None, gb_model, ensemble_model, X_test_processed, y_test_enc)
     
-    # ROC plots require predicted probabilities
-    nn_pred_proba = nn_model.predict_proba(X_test_processed)[:, 1]
+    # ROC plots
     gb_pred_proba = gb_model.predict_proba(X_test_processed)[:, 1]
     ensemble_pred_proba = ensemble_model.predict_proba(X_test_processed)[:, 1]
     
     # Update plot_roc_curves to include ensemble predictions
-    plot_roc_curves(y_test_enc, nn_pred_proba, gb_pred_proba, ensemble_pred_proba)
-    
-    # Save models
-    os.makedirs('data/models', exist_ok=True)
-    nn_model.save('data/models/nn_model.keras')
-    print("Models saved to data/models/")
+    plot_roc_curves(y_test_enc, None, gb_pred_proba, ensemble_pred_proba)
     
     print("Pipeline completed successfully!")
 
