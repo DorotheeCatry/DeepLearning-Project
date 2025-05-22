@@ -1,4 +1,3 @@
-```python
 import pandas as pd
 import numpy as np
 import tensorflow as tf
@@ -58,11 +57,10 @@ def preprocess_data(X_train, X_val, X_test, y_train, y_val, y_test):
     # 5. Create feature names for processed data
     feature_names = (
         num_cols + 
-        [f"{col}_{val}" for col, vals in zip(cat_cols, categorical_transformer.categories_) 
+        [f"{col}_{val}" for col, vals in zip(cat_cols, categorical_transformer.categories) 
          for val in vals[1:]]  # Skip first category due to drop='first'
     )
 
     return (X_train_processed, X_val_processed, X_test_processed,
             preprocessing_layers, preprocessor, feature_names,
             y_train_enc, y_val_enc, y_test_enc)
-```

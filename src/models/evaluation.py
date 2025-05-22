@@ -1,4 +1,3 @@
-```python
 from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
 
 def evaluate_models(nn_model, gb_model, ensemble_model, X_test, y_test):
@@ -51,4 +50,3 @@ def evaluate_models(nn_model, gb_model, ensemble_model, X_test, y_test):
     
     print("\nEnsemble Model Confusion Matrix:")
     print(confusion_matrix(y_test, ensemble_pred))
-```

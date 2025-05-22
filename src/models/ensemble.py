@@ -1,4 +1,3 @@
-```python
 import numpy as np
 from sklearn.ensemble import VotingClassifier
 from scikeras.wrappers import KerasClassifier
@@ -90,4 +89,3 @@ def train_ensemble(nn_model, gb_model, X_train, y_train, X_val, y_val):
     print(f"ROC AUC: {roc_auc_score(y_val, y_proba):.4f}")
     
     return voting_clf
-```
