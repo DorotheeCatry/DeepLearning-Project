@@ -67,8 +67,7 @@ def main():
         X_val_processed,
         y_train_enc,
         y_val_enc,
-        gb_model.get_params(),
-        voting_weights=(0.4, 0.6)  # Give slightly more weight to GB
+        gb_model.get_params()
     )
     
     # Get and plot feature importance
