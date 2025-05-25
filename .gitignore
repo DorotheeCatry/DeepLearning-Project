@@ -24,6 +24,7 @@ coverage.xml
 # Environments
 .env
 .venv
+.venv/
 env/
 venv/
 ENV/
@@ -61,3 +62,10 @@ __init__.py
 
 # Module cache
 __pycache__/
+
+
+# Temporary files
+*.logs
+logs/
+
+pyproject.toml
